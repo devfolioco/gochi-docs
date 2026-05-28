@@ -362,6 +362,22 @@ export function cycleExpression() {
   machine.nextAutoChangeAt = now + AUTO_CHANGE_MS
 }
 
+// Expression-change pub/sub — external listeners (e.g. the buzzer page)
+// get told whenever the pet swaps to a new face.
+type ExpressionListener = (expr: Expression) => void
+const expressionListeners = new Set<ExpressionListener>()
+
+export function onExpressionChange(fn: ExpressionListener): () => void {
+  expressionListeners.add(fn)
+  return () => expressionListeners.delete(fn)
+}
+
+function emitExpressionChange(expr: Expression) {
+  for (const fn of expressionListeners) {
+    try { fn(expr) } catch {}
+  }
+}
+
 // --- module-level rAF loop -----------------------------------------------
 //
 // Started lazily on the first OledFace mount and runs forever after that.
@@ -410,6 +426,7 @@ function frame(now: number) {
         machine.expr = machine.pending
         machine.changing = false
         onExpressionChanged(now)
+        emitExpressionChange(machine.expr)
       }
     } else {
       machine.eyeOpen = 256 - ((t * 256) / BLINK_CLOSE_MS) | 0
