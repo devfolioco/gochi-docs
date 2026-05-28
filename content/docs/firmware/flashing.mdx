@@ -148,6 +148,113 @@ Fix:
 You only have to do this once per power-cycle; after a successful upload
 the board reboots into your code and accepts future flashes normally.
 
+## Flashing from WSL2
+
+WSL2 is a lightweight VM with its own kernel, so USB serial devices need extra
+plumbing that doesn't exist on a native Linux or macOS host. It works, but the
+ESP32-C3's USB re-enumeration on reset makes it finicky.
+
+<Callout type="warn">
+  If WSL keeps fighting you, flashing from **native Windows** `arduino-cli` is
+  the more reliable path — it skips the usbipd hop entirely. Everything below is
+  for when you specifically want to flash from inside WSL.
+</Callout>
+
+<Steps>
+
+<Step>
+
+**Forward the USB device into WSL with [usbipd-win](https://github.com/dorssel/usbipd-win).**
+WSL2 can't see Windows USB devices by default.
+
+```ps
+# Windows PowerShell (Admin) — one time:
+winget install usbipd
+
+# Each session: find the board, bind once, then attach.
+usbipd list                                  # note the ESP32's BUSID, e.g. 2-4
+usbipd bind   --busid 2-4                     # one-time per device
+usbipd attach --wsl --busid 2-4 --auto-attach # --auto-attach survives re-enumeration
+```
+
+`--auto-attach` matters: the ESP32-C3's native USB re-enumerates often, and
+without it the attach drops and won't come back on its own.
+
+</Step>
+
+<Step>
+
+**Load the CDC-ACM serial driver in WSL.** It ships with the WSL kernel but
+isn't loaded by default, so no `/dev/ttyACM*` node is ever created even after a
+successful attach:
+
+```sh
+sudo modprobe cdc_acm            # once per boot
+```
+
+Verify with `lsmod | grep cdc_acm`. An attached board then shows up as
+`/dev/ttyACM0` (confirm in `dmesg`: `cdc_acm 1-1:1.0: ttyACM0: USB ACM device`).
+
+</Step>
+
+<Step>
+
+**If the board reset-loops, force download mode.** If `dmesg` shows the device
+number climbing rapidly (re-enumerating every ~0.6s, each lasting under a
+second), the firmware is in a crash / watchdog boot-loop and usbipd can never
+hold the attach. [Force download mode](#force-download-mode) — hold **BOOT**,
+tap **RESET**, release **BOOT** — so the stable ROM bootloader runs instead. The
+usbipd flapping goes quiet and `/dev/ttyACM0` persists.
+
+</Step>
+
+<Step>
+
+**Fix serial-port permissions.** usbipd-attached devices come up owned
+`root:root` mode `600` — the udev rule that normally hands them to the `dialout`
+group doesn't fire under WSL, so even a `dialout` user can't open the port:
+
+```sh
+sudo chmod 666 /dev/ttyACM0
+make flash
+```
+
+The `chmod` resets every time the device re-attaches (it's a new node). For a
+permanent fix, add a udev rule so every `ttyACM*` comes up world-accessible:
+
+```sh
+echo 'KERNEL=="ttyACM[0-9]*", MODE="0666"' | sudo tee /etc/udev/rules.d/99-ttyacm.rules
+sudo udevadm control --reload-rules
+```
+
+(udev rules only fire if udev/systemd is actually running in your WSL distro.)
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  Need `make format`? Install `clang-format` at user level — no root, lands in
+  `~/.local/bin`: `pip install --user clang-format` (apt alternative:
+  `sudo apt install clang-format`).
+</Callout>
+
+### Cold-start cheat sheet
+
+```ps
+# Windows (Admin):
+usbipd attach --wsl --busid 2-4 --auto-attach
+```
+
+```sh
+# WSL:
+sudo modprobe cdc_acm           # once per boot
+# Hold BOOT, tap RESET, release BOOT  (puts board in download mode)
+ls /dev/ttyACM*                 # confirm /dev/ttyACM0 is present & stable
+sudo chmod 666 /dev/ttyACM0
+make flash
+```
+
 ## Editor setup (optional but nice)
 
 Any editor with clangd support gets full code intelligence — completion,
@@ -172,5 +279,8 @@ and it works out of the box.
 | No board in `make ports`                         | Try a different USB cable (many are power-only). Reboot the host. |
 | Upload hangs at `Connecting...`                  | [Force download mode](#force-download-mode)                     |
 | `Permission denied: /dev/ttyACM0` (Linux)        | `sudo usermod -aG dialout $USER`, then log out + back in        |
+| `Permission denied: /dev/ttyACM0` (WSL2)         | `dialout` doesn't apply — `sudo chmod 666 /dev/ttyACM0`. [WSL setup](#flashing-from-wsl2) |
+| No `/dev/ttyACM*` in WSL2 after attaching        | Load the driver: `sudo modprobe cdc_acm`. [WSL setup](#flashing-from-wsl2) |
+| `usbipd attach` keeps dropping (WSL2)            | Board is reset-looping — [force download mode](#force-download-mode), use `--auto-attach` |
 | Screen flickers after upload                     | Loose `SDA`/`SCL` joint — reflow the OLED end                   |
 | Pet works for 5s then dies                       | Brown-out: try a higher-quality USB cable or power source       |
