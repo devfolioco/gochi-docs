@@ -185,6 +185,52 @@
   outline-offset: 2px;
 }
 
+/* click hint — small pixel cursor + label that pulses over the OLED until
+   the user first clicks. Hides permanently after that (localStorage). */
+.oled .oled-hint {
+  position: absolute;
+  right: 8%;
+  bottom: 12%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink);
+  animation: oled-hint-pulse 1100ms cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.oled .oled-hint__cursor {
+  display: inline-block;
+  color: var(--text-h);
+  font-size: 16px;
+  line-height: 1;
+}
+
+@keyframes oled-hint-pulse {
+  0%, 100% {
+    transform: translate(0, 0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-3px, -3px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oled .oled-hint {
+    animation: none;
+  }
+}
+
 .oled .scanlines {
   position: absolute;
   inset: 0;

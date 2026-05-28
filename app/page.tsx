@@ -10,6 +10,7 @@ export default function Page() {
       <header className="topbar">
         <span className="brand">tamagotchi</span>
         <nav>
+          <a href="/circuit">circuit</a>
           <a href="/docs">docs</a>
           <a href="https://github.com/prathamVaidya/gochi" target="_blank" rel="noreferrer">
             github
