@@ -1,23 +1,17 @@
-import { useState } from 'react'
-import { CircuitBoard } from './CircuitBoard'
-import { EXPRESSIONS, OledFace, type Expression } from './OledFace'
-import './App.css'
+import { CircuitBoard } from './components/CircuitBoard'
+import { OledFace } from './components/OledFace'
+import './landing.css'
 
-function App() {
-  const [expr, setExpr] = useState<Expression>('neutral')
-
-  const cycle = () => {
-    const i = EXPRESSIONS.indexOf(expr)
-    setExpr(EXPRESSIONS[(i + 1) % EXPRESSIONS.length])
-  }
-
+// Server component — everything renders on the server. The OledFace is the
+// only client island (canvas + click handler) and hydrates in place.
+export default function Page() {
   return (
     <main className="page">
       <header className="topbar">
         <span className="brand">tamagotchi</span>
         <nav>
-          <a href="/docs/">docs</a>
-          <a href="https://github.com/" target="_blank" rel="noreferrer">
+          <a href="/docs">docs</a>
+          <a href="https://github.com/prathamVaidya/gochi" target="_blank" rel="noreferrer">
             github
           </a>
         </nav>
@@ -28,7 +22,7 @@ function App() {
           <div className="board">
             <CircuitBoard />
             <div className="board-center">
-              <OledFace expression={expr} onClick={cycle} />
+              <OledFace />
             </div>
           </div>
         </div>
@@ -52,12 +46,12 @@ function App() {
           </ul>
 
           <div className="cta">
-            <a className="btn primary" href="/docs/">
+            <a className="btn primary" href="/docs">
               read the docs →
             </a>
             <a
               className="btn ghost"
-              href="https://github.com/"
+              href="https://github.com/prathamVaidya/gochi"
               target="_blank"
               rel="noreferrer"
             >
@@ -70,10 +64,8 @@ function App() {
       <footer className="foot">
         <span>built at 2586 labs</span>
         <span>·</span>
-        <a href="/docs/">docs</a>
+        <a href="/docs">docs</a>
       </footer>
     </main>
   )
 }
-
-export default App

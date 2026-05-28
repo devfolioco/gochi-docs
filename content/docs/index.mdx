@@ -1,0 +1,61 @@
+---
+title: Welcome
+description: Build a tiny desk pet in one evening — ESP32-C3, OLED, twelve moods.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Card, Cards } from 'fumadocs-ui/components/card'
+
+This is the workshop guide for **Mr. Mini Tamagotchi** — a desk pet you'll
+solder, flash, and bring home from H.M.F #1 at 2586 Labs.
+
+You'll walk in with a bag of parts and walk out with a little robot whose
+eyes blink, drift around the room, and react when you talk to it over USB.
+
+<Callout type="info">
+  No prior electronics experience needed. If you can hold a soldering iron
+  without grabbing the hot end, you can finish this.
+</Callout>
+
+## What's in the kit
+
+- **ESP32-C3 SuperMini** — a wifi-capable microcontroller the size of a postage stamp
+- **SSD1306 0.96" OLED** — 128×64 monochrome, I²C, the screen the pet looks out of
+- **4-pin male header** — to mount the OLED so it can be unplugged later
+- **4 jumper wires** (black, red, yellow, blue) — the four signals between the boards
+- **USB-C cable** — for flashing and power
+
+You bring: a laptop with a USB-A or USB-C port (we have adapters).
+
+## What you'll do, in order
+
+<Cards>
+  <Card title="1. Solder it" href="/docs/hardware/soldering"
+        description="Mount the header on the OLED, run four jumpers to the ESP32." />
+  <Card title="2. Flash the firmware" href="/docs/firmware/flashing"
+        description="Install arduino-cli, build the sketch, upload over USB-C." />
+  <Card title="3. Talk to it" href="/docs/api/serial"
+        description="Switch expressions, play sounds, and read state over a tiny serial protocol." />
+</Cards>
+
+## Time budget
+
+| Stage          | Newcomer | Done this before |
+| -------------- | -------- | ---------------- |
+| Soldering      | 45 min   | 15 min           |
+| Toolchain      | 30 min   | 5 min            |
+| First flash    | 10 min   | 2 min            |
+| Playing with it| as long as you want |          |
+
+## Already comfortable?
+
+Skim the [hardware pinout table](/docs/hardware/soldering#pinout), grab the
+`make flash` workflow from the [firmware page](/docs/firmware/flashing#daily-workflow),
+and the [serial protocol reference](/docs/api/serial) is the source of
+truth for everything the pet can do.
+
+<Callout type="warn">
+  The ESP32-C3 SuperMini has known USB-CDC quirks on first power-up. If
+  `make flash` can't find the board, hold **BOOT**, tap **RESET**, release
+  **BOOT** — this forces download mode. You only need it once.
+</Callout>

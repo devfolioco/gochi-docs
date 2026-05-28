@@ -1,0 +1,163 @@
+---
+title: Skills
+description: Drop the tamagotchi into your AI coding agent — Claude Code, OpenClaw, Hermes, and more.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+
+The pet ships an [agentskills.io](https://agentskills.io)-compliant skill
+so your AI coding agent can drive it directly. Ask Claude "make the
+tamagotchi happy" or "show 'build passed' on the device" and the skill
+takes care of the rest, talking to the local `tamagotchi` CLI server.
+
+## Install
+
+Use [`npx skills`](https://github.com/vercel-labs/skills) — Vercel Labs'
+universal installer. It auto-detects which agents you have installed and
+drops the skill into the right place for each.
+
+<Tabs items={['Project (local)', 'Global', 'Specific agent']}>
+
+<Tab value="Project (local)">
+
+```sh
+npx skills add prathamVaidya/gochi
+```
+
+Writes to `./.<agent>/skills/` for every agent it finds — scoped to the
+current repo only.
+
+</Tab>
+
+<Tab value="Global">
+
+```sh
+npx skills add prathamVaidya/gochi -g
+```
+
+Writes to `~/.<agent>/skills/` so every project on this machine sees it.
+
+</Tab>
+
+<Tab value="Specific agent">
+
+```sh
+# one agent
+npx skills add prathamVaidya/gochi -a claude-code
+
+# several at once, global
+npx skills add prathamVaidya/gochi -a claude-code -a openclaw -a hermes-agent -g
+```
+
+Useful when you have multiple agents installed but only want one of them
+to see the skill.
+
+</Tab>
+
+</Tabs>
+
+Restart the agent (or open a new session) and the `tamagotchi` skill is
+auto-discovered. That's it.
+
+<Callout type="warn">
+  The skill talks to a **local HTTP server on port 7474** that owns the
+  serial connection to your pet. Install the CLI first (see below) or
+  every command will fail with `device offline`.
+</Callout>
+
+## Prerequisite: the CLI
+
+The skill drives the pet through the [`tamagotchi` CLI](https://github.com/prathamVaidya/gochi/tree/main/cli)
+and its background server. One-time setup:
+
+```sh
+git clone https://github.com/prathamVaidya/gochi.git
+cd gochi/cli
+bun install                  # or: npm install
+bun link                     # or: npm link  — registers the `tamagotchi` command globally
+tamagotchi server install    # writes a launchd plist (macOS) — auto-starts at login
+```
+
+Verify:
+
+```sh
+tamagotchi server status
+tamagotchi health
+```
+
+You should see `connected: true` and the pet should be reachable.
+
+## Manage installed skills
+
+```sh
+npx skills list              # what's installed where
+npx skills update tamagotchi # pull latest from the source repo
+npx skills remove tamagotchi # uninstall
+```
+
+## What the agent can do
+
+Once the skill is loaded, the agent has full access to the pet's
+behavior. Plain-English prompts that work:
+
+- *"Make the tamagotchi happy"*
+- *"Set the mood to playful"*
+- *"Show 'build passed' on the screen"*
+- *"What face is the tamagotchi showing right now?"*
+- *"List every face it supports"*
+
+The skill can also react to task outcomes automatically — build pass →
+happy, fail → sad, long wait → sleepy — if your agent's prompt opts in.
+
+## Smoke test
+
+After install, confirm the whole stack works end-to-end:
+
+```sh
+tamagotchi health        # → ok, connected:true
+tamagotchi face happy    # → device shows the happy face
+tamagotchi face neutral  # → reset
+```
+
+Then ask your agent something like *"make the tamagotchi blink"* — it
+should call the skill, the skill calls the server, the server pushes a
+command over USB, and the eyes blink.
+
+## Supported agents
+
+`npx skills` writes to the standard skill location for each agent:
+
+| Agent        | `--agent` slug | Project path        | Global path             |
+| ------------ | -------------- | ------------------- | ----------------------- |
+| Claude Code  | `claude-code`  | `.claude/skills/`   | `~/.claude/skills/`     |
+| OpenClaw     | `openclaw`     | `skills/`           | `~/.openclaw/skills/`   |
+| Hermes Agent | `hermes-agent` | `.hermes/skills/`   | `~/.hermes/skills/`     |
+
+50+ other agents (Codex, Cursor, opencode, Cline, Gemini CLI, …) work
+the same way. See the full table in
+[`vercel-labs/skills`](https://github.com/vercel-labs/skills#supported-agents).
+
+## Manual install
+
+If you'd rather not run `npx`, clone the repo and symlink the skill
+folder yourself. A symlink means `git pull` updates the skill for every
+agent at once.
+
+```sh
+git clone https://github.com/prathamVaidya/gochi.git ~/src/gochi
+
+mkdir -p ~/.claude/skills
+ln -s ~/src/gochi/skills/tamagotchi ~/.claude/skills/tamagotchi
+```
+
+Repeat for whichever agent paths apply (table above).
+
+## Troubleshooting
+
+| Symptom                                  | Try this                                                      |
+| ---------------------------------------- | ------------------------------------------------------------- |
+| Agent can't find the skill               | `npx skills list` — confirm where it landed. The folder must be named `tamagotchi` and contain `SKILL.md` (all caps). |
+| `connected: false` from `tamagotchi health` | Plug the device in. The server reconnects automatically.    |
+| Commands hang or time out                | Another process is holding the serial port (Arduino IDE, `arduino-cli monitor`). Close it. |
+| `tamagotchi: command not found`          | The CLI isn't linked. Re-run `bun link` (or `npm link`) inside `cli/`. |

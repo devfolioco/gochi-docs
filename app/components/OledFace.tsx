@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useRef } from 'react'
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // Faithful web port of firmware/src/views/procedural_face.cpp — same 128x64
 // canvas, same primitives, same per-expression logic. CSS scales it up with
-// image-rendering: pixelated so it stays crunchy.
+// image-rendering: pixelated so it stays crunchy. This is the only client
+// island on the landing page; everything else SSRs.
 
 const OLED_W = 128
 const OLED_H = 64
@@ -269,12 +272,18 @@ function drawBlush(r: R, x: number, y: number) {
 // --- the component -------------------------------------------------------
 
 type Props = {
-  expression: Expression
-  onClick?: () => void
+  initialExpression?: Expression
 }
 
-export function OledFace({ expression, onClick }: Props) {
+export function OledFace({ initialExpression = 'neutral' }: Props = {}) {
   const ref = useRef<HTMLCanvasElement>(null)
+  const [expression, setExpression] = useState<Expression>(initialExpression)
+  const onClick = useCallback(() => {
+    setExpression((e) => {
+      const i = EXPRESSIONS.indexOf(e)
+      return EXPRESSIONS[(i + 1) % EXPRESSIONS.length]
+    })
+  }, [])
 
   // mutable state held across frames without re-rendering
   const stateRef = useRef({

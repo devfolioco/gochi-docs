@@ -1,10 +1,59 @@
+/* Landing-scope tokens — kept inside .page so they don't leak to /docs */
 .page {
+  --bg: #1f5eff;
+  --bg-deep: #0a3bcc;
+  --bg-elev: #1748d8;
+  --text: #d6e2ff;
+  --text-h: #f5f8ff;
+  --muted: #9bb5f0;
+  --border: rgba(255, 255, 255, 0.38);
+  --ink: #06091a;
+  --ink-h: #11162a;
+  --sans: 'Pixelify Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--text);
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+
   max-width: 1140px;
   margin: 0 auto;
   padding: 32px 40px 56px;
   display: flex;
   flex-direction: column;
   min-height: 100svh;
+  position: relative;
+}
+
+/* Blueprint backdrop — fixed full-viewport overlay that mounts/unmounts
+   with the landing route. Replaces the body bg that used to leak everywhere. */
+.page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  background-color: #1f5eff;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size:
+    24px 24px,
+    24px 24px,
+    120px 120px,
+    120px 120px;
+  pointer-events: none;
+}
+
+.page ::selection {
+  background: var(--ink);
+  color: var(--text-h);
 }
 
 /* topbar */
@@ -175,9 +224,8 @@
   text-transform: none;
 }
 
-/* poster-style headline: white pixel text with a hard navy drop-shadow
-   offset down-right for that printed 3D look */
-h1 {
+/* poster-style headline — scoped so /docs h1s stay normal-sized */
+.page h1 {
   font-size: clamp(56px, 8vw, 96px);
   line-height: 0.96;
   letter-spacing: 0;
@@ -188,6 +236,7 @@ h1 {
   text-shadow:
     4px 4px 0 var(--bg-deep),
     8px 8px 0 rgba(0, 0, 0, 0.28);
+  font-family: var(--sans);
 }
 
 .lede {

@@ -1,0 +1,42 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* tell Tailwind v4 where to find class names so it can JIT them */
+@source '../../node_modules/fumadocs-ui/dist/**/*.js';
+@source '../../content/**/*.{md,mdx}';
+@source '../**/*.{ts,tsx}';
+
+/* All docs customization is scoped to the .fd-shell wrapper so nothing
+   leaks to the landing page when Next keeps both stylesheets loaded after
+   client-side navigation. */
+.fd-shell {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Fixed full-viewport background painted only when .fd-shell is mounted —
+   covers the landing's blueprint blue + grid on /docs and disappears
+   automatically when you navigate back. */
+.fd-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--color-fd-background);
+  z-index: -10;
+  pointer-events: none;
+}
+
+.fd-shell #nd-nav,
+.fd-shell #nd-subnav,
+.fd-shell #nd-sidebar,
+.fd-shell #nd-toc,
+.fd-shell .docs-breadcrumb {
+  font-family: 'Pixelify Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* breadcrumb tracks slightly tighter so the pixel font reads cleanly
+   next to the full-weight headline beneath it */
+.fd-shell .docs-breadcrumb {
+  letter-spacing: 0.02em;
+}

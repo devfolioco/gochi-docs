@@ -1,0 +1,141 @@
+---
+title: Serial protocol
+description: The line-based commands the pet accepts over USB CDC at 115200 baud.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+
+The pet speaks a tiny ASCII protocol over USB CDC at **115200 baud**.
+Lines are case-insensitive, terminated with `\n`. Replies are also
+line-oriented; an `OK` or `ERR <reason>` line ends every command.
+
+Open a serial console with:
+
+```sh
+make monitor
+```
+
+Then type commands and hit enter. Responses appear on the next line.
+
+## Command reference
+
+### `SHOW face <name>`
+
+Switch to the named expression. The current expression blinks closed,
+swaps to the new one while the eyes are shut, then opens again — the
+same transition the firmware uses internally.
+
+```
+> SHOW face happy
+OK
+```
+
+Valid names: `neutral`, `happy`, `sad`, `sleepy`, `excited`, `surprised`,
+`angry`, `blink`, `love`, `horny`, `shy`, `dead`.
+
+### `LIST faces`
+
+Print every valid expression name, one per line.
+
+```
+> LIST faces
+neutral
+happy
+sad
+sleepy
+excited
+surprised
+angry
+blink
+love
+horny
+shy
+dead
+OK
+```
+
+### `GET state`
+
+Print the pet's current state as `key=value` pairs. Useful for scripting.
+
+```
+> GET state
+expression=happy
+mood=72
+uptime_ms=184230
+OK
+```
+
+### `BLINK`
+
+Trigger one blink immediately, without changing expression. No-op if the
+current expression doesn't have open eyes (e.g. `sleepy`, `dead`).
+
+```
+> BLINK
+OK
+```
+
+### `PLAY <jingle>`
+
+Play one of the built-in buzzer tunes. Non-blocking — the pet keeps
+animating while the jingle plays. Subsequent `PLAY` calls cancel the
+previous tune.
+
+```
+> PLAY boot
+OK
+```
+
+Available jingles: `boot`, `happy`, `sad`, `alert`, `byte`, `silence`
+(stops any active jingle).
+
+### `HELP`
+
+List every supported command. Useful at the workshop when you forget.
+
+## Error replies
+
+Every command terminates with either `OK` or `ERR <reason>`.
+
+| Reply                      | Meaning                                       |
+| -------------------------- | --------------------------------------------- |
+| `OK`                       | Command accepted and executed                 |
+| `ERR unknown_command`      | First token isn't a known command             |
+| `ERR unknown_face <name>`  | Face name doesn't match any expression        |
+| `ERR unknown_jingle <name>`| Jingle name doesn't match any built-in tune   |
+| `ERR busy`                 | Display is mid-transition; retry in ~200ms    |
+
+## Scripting
+
+The protocol is intentionally simple so you can drive the pet from a
+shell script, a Python REPL, a websocket bridge, or whatever you want.
+
+```py
+import serial, time
+
+pet = serial.Serial('/dev/cu.usbmodem14101', 115200, timeout=1)
+
+for face in ['happy', 'love', 'sleepy', 'dead']:
+    pet.write(f'SHOW face {face}\n'.encode())
+    print(pet.readline().decode().strip())  # → OK
+    time.sleep(2)
+```
+
+<Callout type="info">
+  The serial parser is in `firmware/src/command.cpp`. Adding a new
+  command is ~10 lines: a name, a handler function, a registration in
+  the dispatch table. Pull requests welcome.
+</Callout>
+
+## What the pet does on its own
+
+Even without commands, the pet has personality:
+
+- **Idle gaze drift** — eyes drift sideways every 1.5–3.4 seconds; magnitude depends on the current expression (a `neutral` pet looks around more than a `shy` one).
+- **Spontaneous blinks** — every 2.6–5.2s, faster when `excited`.
+- **Per-expression motion** — `happy` bobs, `excited` bounces, `sleepy` breathes slowly with drifting "Z"s, `sad` cries every 4.2s, `love` pulses to a heartbeat, `angry` trembles.
+
+All of this is procedural — there are no sprite bitmaps. Each expression
+is drawn from rounded rects, circles, and parabolas every frame. See
+`firmware/src/views/procedural_face.cpp` for the details.
