@@ -148,11 +148,44 @@ Fix:
 You only have to do this once per power-cycle; after a successful upload
 the board reboots into your code and accepts future flashes normally.
 
-## Flashing from WSL2
+## Flashing on Linux / WSL2
 
-WSL2 is a lightweight VM with its own kernel, so USB serial devices need extra
-plumbing that doesn't exist on a native Linux or macOS host. It works, but the
-ESP32-C3's USB re-enumeration on reset makes it finicky.
+Flashing from a native Linux host is straightforward. WSL2 is a lightweight VM
+with its own kernel, so USB serial devices need extra plumbing that a native
+host doesn't. Pick your environment:
+
+<Tabs items={['Native Linux', 'WSL2']}>
+
+<Tab value="Native Linux">
+
+On a real Linux box it usually just works once the board is plugged in — the
+Makefile's autodetect already probes the Linux device names
+(`/dev/ttyACM*`, `/dev/ttyUSB*`):
+
+```sh
+make ports          # confirm the board shows up, e.g. /dev/ttyACM0
+make flash          # autodetects PORT; pass PORT=/dev/ttyACM0 if you have several boards
+```
+
+If you hit `Permission denied: /dev/ttyACM0`, add yourself to the `dialout`
+group (then log out and back in so it takes effect):
+
+```sh
+sudo usermod -aG dialout $USER
+```
+
+Need `make format`? Install `clang-format` at user level — no root, lands in
+`~/.local/bin`:
+
+```sh
+pip install --user clang-format   # apt alternative: sudo apt install clang-format
+```
+
+</Tab>
+
+<Tab value="WSL2">
+
+WSL2 works, but the ESP32-C3's USB re-enumeration on reset makes it finicky.
 
 <Callout type="warn">
   If WSL keeps fighting you, flashing from **native Windows** `arduino-cli` is
@@ -239,7 +272,7 @@ sudo udevadm control --reload-rules
   `sudo apt install clang-format`).
 </Callout>
 
-### Cold-start cheat sheet
+**Cold-start cheat sheet**
 
 ```ps
 # Windows (Admin):
@@ -254,6 +287,10 @@ ls /dev/ttyACM*                 # confirm /dev/ttyACM0 is present & stable
 sudo chmod 666 /dev/ttyACM0
 make flash
 ```
+
+</Tab>
+
+</Tabs>
 
 ## Editor setup (optional but nice)
 
@@ -279,8 +316,8 @@ and it works out of the box.
 | No board in `make ports`                         | Try a different USB cable (many are power-only). Reboot the host. |
 | Upload hangs at `Connecting...`                  | [Force download mode](#force-download-mode)                     |
 | `Permission denied: /dev/ttyACM0` (Linux)        | `sudo usermod -aG dialout $USER`, then log out + back in        |
-| `Permission denied: /dev/ttyACM0` (WSL2)         | `dialout` doesn't apply — `sudo chmod 666 /dev/ttyACM0`. [WSL setup](#flashing-from-wsl2) |
-| No `/dev/ttyACM*` in WSL2 after attaching        | Load the driver: `sudo modprobe cdc_acm`. [WSL setup](#flashing-from-wsl2) |
+| `Permission denied: /dev/ttyACM0` (WSL2)         | `dialout` doesn't apply — `sudo chmod 666 /dev/ttyACM0`. [WSL setup](#flashing-on-linux--wsl2) |
+| No `/dev/ttyACM*` in WSL2 after attaching        | Load the driver: `sudo modprobe cdc_acm`. [WSL setup](#flashing-on-linux--wsl2) |
 | `usbipd attach` keeps dropping (WSL2)            | Board is reset-looping — [force download mode](#force-download-mode), use `--auto-attach` |
 | Screen flickers after upload                     | Loose `SDA`/`SCL` joint — reflow the OLED end                   |
 | Pet works for 5s then dies                       | Brown-out: try a higher-quality USB cable or power source       |
