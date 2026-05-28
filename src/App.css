@@ -1,0 +1,317 @@
+.page {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 32px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+}
+
+/* topbar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  padding-bottom: 28px;
+}
+
+.brand {
+  font-family: var(--sans);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.topbar nav {
+  display: flex;
+  gap: 28px;
+  font-size: 15px;
+}
+
+.topbar nav a {
+  color: var(--text);
+  transition: color 180ms ease;
+}
+.topbar nav a:hover {
+  color: var(--text-h);
+}
+
+/* hero */
+.hero {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 72px;
+  align-items: center;
+  padding: 80px 0;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 56px;
+    padding: 48px 0;
+  }
+}
+
+/* workbench — dark navy panel that holds the PCB assembly so the green
+   PCB has a neutral surface to sit on instead of fighting the blueprint blue */
+.workbench {
+  position: relative;
+  background: linear-gradient(180deg, #06183f, #030d24);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    8px 8px 0 0 var(--bg-deep),
+    0 30px 60px -20px rgba(0, 0, 0, 0.6);
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  /* faint perforated-board dot grid, like a prototyping deck */
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1.4px),
+    linear-gradient(180deg, #06183f, #030d24);
+  background-size: 14px 14px, 100% 100%;
+}
+
+.workbench::before {
+  /* corner crop marks — blueprint detail */
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+
+/* board */
+.board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 480 / 670;
+  margin: 0 auto;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5));
+}
+
+.circuit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.board-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* OLED sits inside the silk-screen footprint on the breakout PCB.
+     Footprint top is at SVG y=47 in a 640-tall viewBox → that's 47/640
+     of the container height; expressed as a % of container width (which
+     is what padding-top resolves against) for a 480/640 board: 9.8% */
+  padding-top: 9.8%;
+  gap: 12px;
+}
+
+/* OLED — no bezel, no frame; the screen sits directly on the green PCB.
+   Width is 80% of breakout. Breakout is 340/480 SVG units of the board
+   container ⇒ 0.8 × (340/480) ≈ 56.7%. The 128:64 aspect ratio + 2:1
+   breakout makes the height also exactly 80% of the breakout. */
+.oled {
+  width: 56.7%;
+  aspect-ratio: 128 / 64;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  position: relative;
+  max-width: 100%;
+  cursor: pointer;
+  outline: none;
+}
+.oled:focus-visible {
+  outline: 2px solid var(--text-h);
+  outline-offset: 2px;
+}
+
+.oled .scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.2) 0px,
+    rgba(0, 0, 0, 0.2) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.55;
+}
+
+.oled canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #04060a;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* copy */
+.copy {
+  max-width: 560px;
+}
+
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-h);
+  margin: 0 0 18px;
+  text-transform: none;
+}
+
+/* poster-style headline: white pixel text with a hard navy drop-shadow
+   offset down-right for that printed 3D look */
+h1 {
+  font-size: clamp(56px, 8vw, 96px);
+  line-height: 0.96;
+  letter-spacing: 0;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0 0 32px;
+  text-transform: uppercase;
+  text-shadow:
+    4px 4px 0 var(--bg-deep),
+    8px 8px 0 rgba(0, 0, 0, 0.28);
+}
+
+.lede {
+  font-family: var(--sans);
+  font-size: 18px;
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 32px;
+  max-width: 56ch;
+}
+
+/* event tags — small, flat, badge-like. Distinct from buttons because they
+   carry no hard-shadow and don't look pressable. */
+.tags {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--sans);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.tag-date {
+  padding: 3px 10px;
+  background: var(--ink);
+  color: var(--text-h);
+}
+
+.tag-place {
+  padding: 3px 10px;
+  background: var(--ink);
+  color: var(--text-h);
+}
+
+.cta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 44px;
+}
+
+/* both buttons share a consistent black drop-shadow so they read as a
+   matched pair of "stickers" on the blueprint. Press translates exactly
+   onto the shadow position for a clean tactile press. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: 0;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 2px solid var(--ink);
+  cursor: pointer;
+  box-shadow: 4px 4px 0 0 var(--ink);
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+
+.btn.primary {
+  background: var(--text-h);
+  color: var(--ink);
+}
+.btn.primary:hover {
+  background: var(--ink);
+  color: var(--text-h);
+}
+
+.btn.ghost {
+  background: transparent;
+  color: var(--text-h);
+  border-color: var(--text-h);
+}
+.btn.ghost:hover {
+  background: var(--text-h);
+  color: var(--ink);
+  border-color: var(--text-h);
+}
+
+/* footer */
+.foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding-top: 28px;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.foot a {
+  transition: color 180ms ease;
+}
+.foot a:hover {
+  color: var(--text-h);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
