@@ -11,7 +11,23 @@ so your AI coding agent can drive it directly. Ask Claude "make the
 tamagotchi happy" or "show 'build passed' on the device" and the skill
 takes care of the rest, talking to the local `gochi` CLI server.
 
-## Install
+## Connect your agent in one message
+
+The fastest way: paste this into your agent's chat and it will install
+the skill itself.
+
+```
+Read https://gochi.in/skill.md and follow the instructions to install
+the gochi skill on this machine.
+```
+
+The page is the skill source — agents that understand `skill.md` (Claude
+Code, OpenClaw, Hermes, and others) read it, drop the files into the
+right place, and are ready to drive the pet once the CLI is running.
+
+Prefer to install it yourself? Keep reading.
+
+## Install with `npx skills`
 
 Use [`npx skills`](https://github.com/vercel-labs/skills) — Vercel Labs'
 universal installer. It auto-detects which agents you have installed and
