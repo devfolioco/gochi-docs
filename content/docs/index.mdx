@@ -13,8 +13,8 @@ You'll walk in with a bag of parts and walk out with a little robot whose
 eyes blink, drift around the room, and react when you talk to it over USB.
 
 <Callout type="info">
-  No prior electronics experience needed. If you can hold a soldering iron
-  without grabbing the hot end, you can finish this.
+  No prior electronics experience needed. If you can push a jumper wire
+  into a breadboard, you can finish this.
 </Callout>
 
 ## What's in the kit
@@ -34,8 +34,8 @@ You bring:
 ## What you'll do, in order
 
 <Cards>
-  <Card title="1. Solder it" href="/docs/hardware/soldering"
-        description="Mount the header on the OLED, run four jumpers to the ESP32." />
+  <Card title="1. Wire it" href="/docs/hardware/wiring"
+        description="Breadboard the OLED, buzzer, and IMU onto the ESP32-C3. No soldering." />
   <Card title="2. Flash the firmware" href="/docs/firmware/flashing"
         description="Install arduino-cli, build the sketch, upload over USB-C." />
   <Card title="3. Talk to it" href="/docs/api/serial"
@@ -46,14 +46,14 @@ You bring:
 
 | Stage          | Newcomer | Done this before |
 | -------------- | -------- | ---------------- |
-| Soldering      | 45 min   | 15 min           |
+| Wiring         | 20 min   | 5 min            |
 | Toolchain      | 30 min   | 5 min            |
 | First flash    | 10 min   | 2 min            |
 | Playing with it| as long as you want |          |
 
 ## Already comfortable?
 
-Skim the [hardware pinout table](/docs/hardware/soldering#pinout), grab the
+Skim the [hardware pin map](/docs/hardware/wiring#pin-map), grab the
 `make flash` workflow from the [firmware page](/docs/firmware/flashing#daily-workflow),
 and the [serial protocol reference](/docs/api/serial) is the source of
 truth for everything the pet can do.
