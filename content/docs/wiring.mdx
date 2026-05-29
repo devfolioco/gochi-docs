@@ -7,8 +7,8 @@ import { Callout } from 'fumadocs-ui/components/callout'
 import { Steps, Step } from 'fumadocs-ui/components/steps'
 import { SuperMiniPinout } from '@/app/components/SuperMiniPinout'
 
-You've already seen the face in the [Quickstart](/docs/quickstart) — now
-build the real thing. This is the full pet on a half-size breadboard:
+Your toolchain is set up from [Setup](/docs/setup) — now build
+the real thing. This is the full pet on a half-size breadboard:
 the OLED again (this time on the breadboard), plus a **buzzer** for sound
 and an **IMU** so it reacts when you pick it up or shake it.
 
@@ -29,33 +29,20 @@ much easier to debug when you only just added one wire.
 
 ## Before you start
 
-The verify commands at each step talk to the pet through the **`gochi`
-CLI** and its background daemon (which owns the USB serial port). Install
-it from the repo you already cloned — not the published package — so any
-changes you make to the CLI are the ones that run:
+You'll verify each component with a small **bring-up test** that lives in
+the firmware repo. Every test is a single `make` target — it compiles a
+tiny sketch, flashes it, and exercises just the sensor you just wired:
 
-```sh
-cd cli                 # inside the gochi repo
-npm install            # or: bun install
-npm link               # or: bun link — registers `gochi` globally
-gochi setup            # installs the daemon — it auto-starts at login
-gochi ping             # check it's working — should print PONG
-```
+| Target            | What it does                                         |
+| ----------------- | ---------------------------------------------------- |
+| `make test-led`   | Blinks the ESP32-C3's onboard blue LED               |
+| `make test-oled`  | Draws "Hello" on the OLED                            |
+| `make test-buzzer`| Plays a short tone                                   |
+| `make test-mpu`   | Streams IMU data + opens a live browser visualizer   |
 
-<Callout type="info">
-  There's no build step: the CLI runs its TypeScript sources directly (via
-  `tsx`), so editing anything under `cli/src` takes effect the next time you
-  run `gochi`.
-</Callout>
-
-With the CLI in place, confirm the firmware is flashed and the daemon is
-talking to the board:
-
-- `make flash` has run successfully — see [Flashing the firmware](/docs/firmware)
-- `gochi daemon status` prints `loaded`
-- `gochi ping` returns `PONG`
-
-If `gochi ping` fails, fix that first.
+No CLI install needed yet — these run straight from `arduino-cli`. The
+[`gochi` CLI](#drive-it-from-the-gochi-cli) comes at the end, once the
+hardware is proven.
 
 ## Pin map
 
@@ -104,8 +91,22 @@ centre gap.
 
 <Step>
 
-**Plug in USB.** The SuperMini's tiny red power LED should light up.
-Nothing to test in `gochi` yet — we'll start once the OLED is in.
+**Plug in USB.** The SuperMini's tiny **red power LED** should light
+up.
+
+</Step>
+
+<Step>
+
+**Verify:**
+
+```sh
+make test-led
+```
+
+After flashing, the **blue LED** on the SuperMini starts blinking.
+That confirms power, USB data, and the toolchain are all wired up
+correctly before you add anything else.
 
 </Step>
 
@@ -153,39 +154,15 @@ varies between modules.
 **Verify:**
 
 ```sh
-gochi i2c
+make test-oled
 ```
 
-You should see:
-
-```
-Bus A (hardware I2C, GPIO5/6):
-  0x3C  SSD1306 OLED
-Bus B (software I2C, GPIO7/8):
-  (no devices)
-```
-
-</Step>
-
-<Step>
-
-**Check the panel actually lights up:**
-
-```sh
-gochi test oled
-```
-
-It writes "Hello" and asks if you can see it.
+The OLED should light up and draw **"Hello"**. If it stays dark,
+double-check `SDA`/`SCK` aren't swapped and `VDD` is on the right rail.
 
 </Step>
 
 </Steps>
-
-<Callout type="info">
-  If `0x3C` shows up but the screen stays blank, the panel itself is
-  dead — address ACK happens at the bus level before any pixels are
-  drawn.
-</Callout>
 
 ## Step 3 — Buzzer
 
@@ -211,11 +188,11 @@ It writes "Hello" and asks if you can see it.
 **Verify:**
 
 ```sh
-gochi test buzzer
+make test-buzzer
 ```
 
-You should hear a short musical phrase. The CLI then asks "Did you
-hear a tone?".
+You should hear a short tone. Silence usually means an active buzzer
+slipped into the kit — see the callout below.
 
 </Step>
 
@@ -254,33 +231,15 @@ Leave `XDA`, `XCL`, `AD0`, and `INT` unconnected.
 
 <Step>
 
-**Verify the bus:**
+**Verify:**
 
 ```sh
-gochi i2c
+make test-mpu
 ```
 
-Both buses should now populate:
-
-```
-Bus A (hardware I2C, GPIO5/6):
-  0x3C  SSD1306 OLED
-Bus B (software I2C, GPIO7/8):
-  0x68  MPU-6050 IMU
-```
-
-</Step>
-
-<Step>
-
-**Test gestures:**
-
-```sh
-gochi test imu
-```
-
-Lift the device — face becomes `surprised`. Shake it firmly — face
-becomes `angry`.
+This flashes the IMU streaming sketch and opens a live visualizer in
+your browser (Chrome or Edge — uses the Web Serial API). Tilt and
+shake the board and the values should move in real time.
 
 </Step>
 
@@ -300,29 +259,57 @@ becomes `angry`.
   reflash.
 </Callout>
 
-## Final check
+## Flash the full firmware
 
-Run the full self-test:
+All four bring-up tests passed — the hardware is good. Now flash the
+actual pet firmware so the device runs the real face, sounds, and
+gesture loop:
+
+```sh
+make flash
+```
+
+The OLED wakes up a second or two later with the pet's eyes blinking
+and drifting around.
+
+## Drive it from the gochi CLI
+
+With the hardware proven and the firmware flashed, the **`gochi` CLI**
+gives you a friendlier interface to talk to the device — query state,
+trigger sounds, set faces, and let agents drive the pet through its
+local HTTP daemon. Install it from the repo you already cloned, not the
+published package:
+
+```sh
+cd cli                 # inside the gochi repo
+bun install
+bun link               # registers `gochi` globally
+gochi setup            # installs the daemon — it auto-starts at login
+gochi ping             # should print PONG
+```
+
+<Callout type="info">
+  There's no build step: the CLI runs its TypeScript sources directly (via
+  `tsx`), so editing anything under `cli/src` takes effect the next time you
+  run `gochi`.
+</Callout>
+
+Final end-to-end check:
 
 ```sh
 gochi test all
 ```
 
 It walks through serial → OLED → buzzer → IMU, asking a yes/no
-question after each. All green means you're done with the hardware.
+question after each. All green means you're done.
 
 ## Troubleshooting
 
 | Symptom | First thing to check |
 |---------|----------------------|
-| `gochi ping` doesn't return `PONG` | USB cable (data, not power); `gochi daemon status` |
-| OLED dark but `0x3C` shows up | Panel is dead — try another OLED |
-| OLED + `0x3C` both missing | `SDA`/`SCK` swapped; `VDD` on wrong rail |
-| Buzzer silent | It's an active buzzer, not passive |
-| MPU `0x68` missing | `SDA`/`SCL` swapped, or `AD0` pulled HIGH (try `0x69`) |
+| `make test-led` fails to upload | USB cable (data, not power); try holding BOOT, tapping RESET, release BOOT |
+| OLED dark after `make test-oled` | `SDA`/`SCK` swapped; `VDD` on wrong rail; or the panel itself is dead |
+| Buzzer silent after `make test-buzzer` | It's an active buzzer, not passive |
+| `make test-mpu` shows no movement | `SDA`/`SCL` swapped, or `AD0` pulled HIGH — see config note above |
 | Board enters flash-download mode at boot | `GPIO8` floated LOW — MPU got unplugged |
-| Both devices stop ACKing | I²C bus shorted — rebuild one component at a time |
-
-For anything else, `gochi i2c` is the fastest tool — it tells you
-immediately whether a device is alive on the bus, which separates
-wiring problems from code problems.
+| `gochi ping` doesn't return `PONG` | `gochi daemon status` — daemon may not be running |

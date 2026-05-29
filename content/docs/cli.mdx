@@ -1,0 +1,133 @@
+---
+title: CLI reference
+description: Every gochi command, what it does, and when to reach for it.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+
+The `gochi` CLI is the friendly front-end to the pet. It talks to a
+background daemon that owns the USB serial port, so multiple terminals,
+scripts, and AI skills can drive the device without fighting each other.
+
+Install it from the [Wiring](/docs/wiring#drive-it-from-the-gochi-cli)
+page if you haven't yet, then:
+
+```sh
+gochi --help        # top-level command list
+gochi <cmd> --help  # detail for a single command
+gochi --version
+```
+
+## Daemon lifecycle
+
+| Command           | What it does                                                              |
+| ----------------- | ------------------------------------------------------------------------- |
+| `gochi setup`     | One-time install — registers the daemon (and HTTP server) so it auto-starts at login. |
+| `gochi stop`      | Release the serial port (run this **before `make flash`**).               |
+| `gochi start`     | Reacquire the serial port after a `stop`.                                 |
+| `gochi kill`      | Terminate the daemon. launchd/systemd/Task Scheduler auto-respawns it with the current code. |
+
+<Callout type="info">
+  `kill` is the easiest way to pick up local changes to the CLI/daemon
+  source — the service manager respawns the process and the new code is
+  loaded next time you run a command.
+</Callout>
+
+## Drive the pet
+
+| Command                | Args                                  | What it does                                              |
+| ---------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `gochi face [name]`    | face name, e.g. `happy`               | Show an expression. Omit `name` for an interactive menu.  |
+| `gochi mood [name]`    | mood name, e.g. `playful`             | Set the pet's mood. Omit `name` for a menu.               |
+| `gochi text <text...>` | a string (quote if it has spaces)     | Show text on the OLED. Long lines scroll.                 |
+| `gochi image <path>`   | path to a PNG or JPG                  | Render an image (auto-resized to 128×64, 1-bit).          |
+
+**Faces:** `neutral`, `happy`, `sad`, `sleepy`, `excited`, `surprised`,
+`angry`, `blink`, `love`, `sexy`, `shy`, `dead`.
+
+**Moods:** `content`, `playful`, `grumpy`, `sleepy`, `affectionate`.
+
+### `gochi image` options
+
+| Flag                   | Default | What it does                                                       |
+| ---------------------- | ------- | ------------------------------------------------------------------ |
+| `--no-dither`          | off     | Use a plain brightness threshold instead of Floyd–Steinberg.       |
+| `-t, --threshold <n>`  | `128`   | Threshold cutoff `0..255`. Only meaningful with `--no-dither`.     |
+| `--invert`             | off     | Swap on/off pixels.                                                |
+| `--bg <color>`         | `black` | Letterbox fill — `black` or `white`.                               |
+
+```sh
+gochi image ~/Pictures/skull.png
+gochi image logo.png --no-dither -t 90 --bg white
+```
+
+## Queries
+
+| Command            | What you get                                                       |
+| ------------------ | ------------------------------------------------------------------ |
+| `gochi ping`       | `PONG` if the daemon is reachable.                                 |
+| `gochi health`     | Daemon + device status as JSON.                                    |
+| `gochi get state`  | Current view and active expression.                                |
+| `gochi get fps`    | Display frame rate the firmware is achieving.                      |
+| `gochi list faces` | Every face name the firmware knows about.                          |
+| `gochi i2c`        | Scan both I²C buses and label every device that ACKs.              |
+
+`gochi i2c` is the fastest tool for wiring problems — it tells you whether
+a device is alive on the bus, separating hardware issues from code issues.
+
+## Self-test
+
+```sh
+gochi test                # menu — pick a component
+gochi test serial         # USB serial round-trip
+gochi test oled           # write "Hello" and ask you if it shows
+gochi test buzzer         # play a tone, ask if you heard it
+gochi test imu            # lift and shake, watch the face react
+gochi test all            # walks through every component in order
+```
+
+Each step asks a y/n question, so you always know exactly which part of
+the stack passed.
+
+## Daemon
+
+| Command              | What it does                                                  |
+| -------------------- | ------------------------------------------------------------- |
+| `gochi daemon status`| Print the launchd/systemd unit + UDS socket state.            |
+| `gochi daemon run`   | Run the daemon in the foreground. Used by service managers — you usually don't run this yourself. |
+
+## HTTP server
+
+The HTTP frontend is what AI skills and external scripts talk to (default
+`http://localhost:7474`). It's enabled by default after `gochi setup`.
+
+| Command               | What it does                                                |
+| --------------------- | ----------------------------------------------------------- |
+| `gochi server enable` | Turn the TCP HTTP listener on.                              |
+| `gochi server disable`| Turn it off (the UDS socket keeps working for local CLI use). |
+| `gochi server status` | Show the listener state.                                    |
+| `gochi server run`    | Foreground process used by launchd — not for interactive use. |
+
+## Common recipes
+
+**Before flashing firmware:**
+
+```sh
+gochi stop
+make flash
+gochi start
+```
+
+**Show a build result:**
+
+```sh
+gochi face happy
+gochi text "build passed"
+```
+
+**Reset to a neutral state:**
+
+```sh
+gochi face neutral
+gochi mood content
+```

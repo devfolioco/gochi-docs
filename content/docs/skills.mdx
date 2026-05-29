@@ -9,7 +9,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
 The pet ships an [agentskills.io](https://agentskills.io)-compliant skill
 so your AI coding agent can drive it directly. Ask Claude "make the
 tamagotchi happy" or "show 'build passed' on the device" and the skill
-takes care of the rest, talking to the local `tamagotchi` CLI server.
+takes care of the rest, talking to the local `gochi` CLI server.
 
 ## Install
 
@@ -68,22 +68,22 @@ auto-discovered. That's it.
 
 ## Prerequisite: the CLI
 
-The skill drives the pet through the [`tamagotchi` CLI](https://github.com/devfolioco/gochi/tree/main/cli)
+The skill drives the pet through the [`gochi` CLI](https://github.com/devfolioco/gochi/tree/main/cli)
 and its background server. One-time setup:
 
 ```sh
 git clone https://github.com/devfolioco/gochi.git
 cd gochi/cli
-bun install                  # or: npm install
-bun link                     # or: npm link  — registers the `tamagotchi` command globally
-tamagotchi server install    # writes a launchd plist (macOS) — auto-starts at login
+bun install
+bun link                # registers the `gochi` command globally
+gochi server install    # writes a launchd plist (macOS) — auto-starts at login
 ```
 
 Verify:
 
 ```sh
-tamagotchi server status
-tamagotchi health
+gochi server status
+gochi health
 ```
 
 You should see `connected: true` and the pet should be reachable.
@@ -115,9 +115,9 @@ happy, fail → sad, long wait → sleepy — if your agent's prompt opts in.
 After install, confirm the whole stack works end-to-end:
 
 ```sh
-tamagotchi health        # → ok, connected:true
-tamagotchi face happy    # → device shows the happy face
-tamagotchi face neutral  # → reset
+gochi health        # → ok, connected:true
+gochi face happy    # → device shows the happy face
+gochi face neutral  # → reset
 ```
 
 Then ask your agent something like *"make the tamagotchi blink"* — it
@@ -158,6 +158,6 @@ Repeat for whichever agent paths apply (table above).
 | Symptom                                  | Try this                                                      |
 | ---------------------------------------- | ------------------------------------------------------------- |
 | Agent can't find the skill               | `npx skills list` — confirm where it landed. The folder must be named `tamagotchi` and contain `SKILL.md` (all caps). |
-| `connected: false` from `tamagotchi health` | Plug the device in. The server reconnects automatically.    |
+| `connected: false` from `gochi health` | Plug the device in. The server reconnects automatically.    |
 | Commands hang or time out                | Another process is holding the serial port (Arduino IDE, `arduino-cli monitor`). Close it. |
-| `tamagotchi: command not found`          | The CLI isn't linked. Re-run `bun link` (or `npm link`) inside `cli/`. |
+| `gochi: command not found`          | The CLI isn't linked. Re-run `bun link` inside `cli/`. |

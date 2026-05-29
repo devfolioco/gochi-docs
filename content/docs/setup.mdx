@@ -1,0 +1,117 @@
+---
+title: Setup
+description: Fork the repo, install the toolchain, and verify flashing works.
+---
+
+import { Callout } from "fumadocs-ui/components/callout";
+import { Steps, Step } from "fumadocs-ui/components/steps";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+Get your machine ready to build and flash the firmware: fork the repo,
+install `arduino-cli` + the ESP32 core, and confirm flashing works by
+blinking the board's onboard LED. Wiring the actual pet comes next.
+
+<Callout type="info">
+  When this page is done you'll have a verified toolchain. The
+  [Wiring](/docs/wiring) page is where you build the pet itself and flash the
+  real firmware.
+</Callout>
+
+## Setup Development Environment
+
+<Steps>
+
+<Step>
+
+**Fork the repo, then clone your fork and `cd` into it.** Head to
+[github.com/devfolioco/gochi](https://github.com/devfolioco/gochi) and click
+**Fork** to create your own copy. Then clone that fork (replace `YOUR-USERNAME`
+with your GitHub handle). Every command below runs from the repo root.
+
+```sh
+git clone https://github.com/YOUR-USERNAME/gochi.git
+cd gochi
+```
+
+</Step>
+
+<Step>
+
+**Plug the ESP32-C3 into USB.** A small **red power LED** lights up — that's
+your sign it's powered. Leave it plugged in.
+
+</Step>
+
+<Step>
+
+**Install the toolchain.** You need two things: [`arduino-cli`](https://arduino.github.io/arduino-cli/)
+to build and flash the firmware (no Arduino IDE), and [`bun`](https://bun.sh)
+to run the `gochi` CLI you'll install on the [Wiring](/docs/wiring) page.
+
+<Tabs items={['macOS', 'Linux', 'Windows']}>
+<Tab value="macOS">
+
+```sh
+brew install arduino-cli
+brew install oven-sh/bun/bun
+```
+
+</Tab>
+<Tab value="Linux">
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+sudo mv bin/arduino-cli /usr/local/bin/   # put it on your PATH
+
+curl -fsSL https://bun.sh/install | bash
+```
+
+</Tab>
+<Tab value="Windows">
+
+```ps
+scoop install arduino-cli
+powershell -c "irm bun.sh/install.ps1 | iex"
+```
+
+</Tab>
+</Tabs>
+
+Then install the ESP32 core (a ~300 MB download — grab a coffee):
+
+```sh
+arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
+```
+
+</Step>
+
+<Step>
+
+**Verify flashing works.** Confirm the toolchain can talk to the board
+by blinking the ESP32-C3's onboard LED:
+
+```sh
+make test-led
+```
+
+The port is auto-detected. If the upload hangs at _"Connecting…"_, hold
+**BOOT**, tap **RESET**, release **BOOT**, and run it again. Once it
+completes, the **blue LED** on the ESP32-C3 starts blinking — flashing
+works.
+
+</Step>
+
+</Steps>
+
+## Next
+
+Your toolchain is verified. Now build the pet:
+
+- **[Wiring →](/docs/wiring)** — assemble the OLED, buzzer, and
+  MPU-6050 on a breadboard, then flash the real firmware.
+- **[Firmware →](/docs/firmware)** — the full toolchain reference: daily
+  workflow, serial monitor, WSL2, troubleshooting.
+- **[Serial protocol →](/docs/serial)** — drive expressions and sounds
+  over USB from your own scripts.
+- **[Skills →](/docs/skills)** — let an AI coding agent control the pet.

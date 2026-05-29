@@ -31,7 +31,7 @@ Open <http://localhost:3000>.
 | `bun start`      | Serve the production build                   |
 | `bun run lint`   | Lint (next + eslint)                         |
 
-Bun is used here, but `npm`, `pnpm`, or `yarn` work too.
+Use Bun for all install/run commands.
 
 ---
 

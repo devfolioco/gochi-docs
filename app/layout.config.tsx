@@ -6,13 +6,8 @@ export const baseOptions: BaseLayoutProps = {
   },
   links: [
     {
-      text: 'circuit',
+      text: 'playground',
       url: '/circuit',
-    },
-    {
-      text: 'skills',
-      url: '/docs/skills',
-      active: 'nested-url',
     },
     {
       text: 'source',
