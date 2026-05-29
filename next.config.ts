@@ -9,6 +9,9 @@ const config: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  async redirects() {
+    return [{ source: '/circuit', destination: '/playground', permanent: true }]
+  },
 }
 
 export default withMDX(config)

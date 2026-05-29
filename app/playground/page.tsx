@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Circuit } from '../components/Circuit'
-import './circuit.css'
+import './playground.css'
 
 export const metadata: Metadata = {
   title: 'playground · tamagotchi',
