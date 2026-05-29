@@ -16,7 +16,7 @@ export const baseOptions: BaseLayoutProps = {
     },
     {
       text: 'source',
-      url: 'https://github.com/prathamVaidya/gochi',
+      url: 'https://github.com/devfolioco/gochi',
       external: true,
     },
   ],

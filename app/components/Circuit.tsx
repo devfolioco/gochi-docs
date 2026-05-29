@@ -399,7 +399,7 @@ export function Circuit() {
           <h1>Circuit Builder</h1>
         </div>
         <a
-          href="https://github.com/prathamVaidya/gochi/blob/main/firmware/src/config.h"
+          href="https://github.com/devfolioco/gochi/blob/main/firmware/src/config.h"
           target="_blank"
           rel="noreferrer"
           className="circuit-source"

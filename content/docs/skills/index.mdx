@@ -22,7 +22,7 @@ drops the skill into the right place for each.
 <Tab value="Project (local)">
 
 ```sh
-npx skills add prathamVaidya/gochi
+npx skills add devfolioco/gochi
 ```
 
 Writes to `./.<agent>/skills/` for every agent it finds — scoped to the
@@ -33,7 +33,7 @@ current repo only.
 <Tab value="Global">
 
 ```sh
-npx skills add prathamVaidya/gochi -g
+npx skills add devfolioco/gochi -g
 ```
 
 Writes to `~/.<agent>/skills/` so every project on this machine sees it.
@@ -44,10 +44,10 @@ Writes to `~/.<agent>/skills/` so every project on this machine sees it.
 
 ```sh
 # one agent
-npx skills add prathamVaidya/gochi -a claude-code
+npx skills add devfolioco/gochi -a claude-code
 
 # several at once, global
-npx skills add prathamVaidya/gochi -a claude-code -a openclaw -a hermes-agent -g
+npx skills add devfolioco/gochi -a claude-code -a openclaw -a hermes-agent -g
 ```
 
 Useful when you have multiple agents installed but only want one of them
@@ -68,11 +68,11 @@ auto-discovered. That's it.
 
 ## Prerequisite: the CLI
 
-The skill drives the pet through the [`tamagotchi` CLI](https://github.com/prathamVaidya/gochi/tree/main/cli)
+The skill drives the pet through the [`tamagotchi` CLI](https://github.com/devfolioco/gochi/tree/main/cli)
 and its background server. One-time setup:
 
 ```sh
-git clone https://github.com/prathamVaidya/gochi.git
+git clone https://github.com/devfolioco/gochi.git
 cd gochi/cli
 bun install                  # or: npm install
 bun link                     # or: npm link  — registers the `tamagotchi` command globally
@@ -145,7 +145,7 @@ folder yourself. A symlink means `git pull` updates the skill for every
 agent at once.
 
 ```sh
-git clone https://github.com/prathamVaidya/gochi.git ~/src/gochi
+git clone https://github.com/devfolioco/gochi.git ~/src/gochi
 
 mkdir -p ~/.claude/skills
 ln -s ~/src/gochi/skills/tamagotchi ~/.claude/skills/tamagotchi

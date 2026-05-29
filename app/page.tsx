@@ -12,7 +12,7 @@ export default function Page() {
         <nav>
           <a href="/circuit">circuit</a>
           <a href="/docs">docs</a>
-          <a href="https://github.com/prathamVaidya/gochi" target="_blank" rel="noreferrer">
+          <a href="https://github.com/devfolioco/gochi" target="_blank" rel="noreferrer">
             github
           </a>
         </nav>
@@ -52,7 +52,7 @@ export default function Page() {
             </a>
             <a
               className="btn ghost"
-              href="https://github.com/prathamVaidya/gochi"
+              href="https://github.com/devfolioco/gochi"
               target="_blank"
               rel="noreferrer"
             >

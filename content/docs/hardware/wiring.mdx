@@ -1,0 +1,297 @@
+---
+title: Wiring the hardware
+description: One component at a time — wire it, verify it, then move on.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+
+Everything plugs into a half-size breadboard with dupont jumpers. **No
+soldering required.** Add one component, run the verify command, then
+move on. Mistakes are much easier to debug when you only just added one
+wire.
+
+## What you're building with
+
+| Part | Notes |
+|------|-------|
+| ESP32-C3 SuperMini | Native USB-C |
+| SSD1306 OLED, 0.96" | I²C, address `0x3C` |
+| GY-521 / MPU-6050 IMU | I²C, address `0x68` |
+| Passive piezo buzzer | Must be **passive**, not active |
+| Half-size breadboard | 400 tie-points is plenty |
+| ~14 dupont jumpers (M-M) | Short ones (5–10 cm) work best |
+| USB-C cable | Data, not power-only |
+
+## Before you start
+
+You'll need the firmware on the board and the CLI working — the
+verify commands at each step depend on it.
+
+- `make flash` has run successfully
+- `gochi daemon status` prints `loaded`
+- `gochi ping` returns `PONG`
+
+If `gochi ping` fails, fix that first. See
+[Flashing the firmware](/docs/firmware/flashing).
+
+## Pin map
+
+The full wiring, for reference. Don't try to do it all at once — follow
+the steps below.
+
+| ESP32-C3 | Goes to |
+|----------|---------|
+| `3V3` | breadboard `+` rail |
+| `GND` | breadboard `−` rail |
+| `GPIO5` | OLED `SDA` |
+| `GPIO6` | OLED `SCL` |
+| `GPIO7` | MPU `SDA` |
+| `GPIO8` | MPU `SCL` |
+| `GPIO10` | Buzzer signal |
+
+<Callout type="info">
+  **Why two I²C buses?** The OLED runs on the C3's hardware I²C
+  (`GPIO5/6`). The MPU runs on a separate software I²C bus
+  (`GPIO7/8`). Stacking both on one bus dropped pull-up resistance too
+  low for fast-mode and corrupted address bytes.
+</Callout>
+
+## Step 1 — Power rails
+
+<Steps>
+
+<Step>
+
+**Plug the SuperMini into the breadboard** so its pins straddle the
+centre gap.
+
+</Step>
+
+<Step>
+
+**Wire `3V3` → `+` rail** (red jumper, by convention).
+
+</Step>
+
+<Step>
+
+**Wire `GND` → `−` rail** (black jumper).
+
+</Step>
+
+<Step>
+
+**Plug in USB.** The SuperMini's tiny red power LED should light up.
+Nothing to test in `gochi` yet — we'll start once the OLED is in.
+
+</Step>
+
+</Steps>
+
+<Callout type="warn">
+  **Use `3V3`, not `5V`.** The SuperMini exposes both. All three
+  components are 3.3 V devices — feeding 5 V can damage the OLED and
+  makes I²C level translation unreliable on the MPU.
+</Callout>
+
+## Step 2 — OLED
+
+<Steps>
+
+<Step>
+
+**Place the OLED on a free row.** Read the silkscreen — pin order
+varies between modules.
+
+</Step>
+
+<Step>
+
+**Wire it up:**
+
+- `GND` → `−` rail
+- `VCC` → `+` rail
+- `SCL` → `GPIO6`
+- `SDA` → `GPIO5`
+
+</Step>
+
+<Step>
+
+**Verify:**
+
+```sh
+gochi i2c
+```
+
+You should see:
+
+```
+Bus A (hardware I2C, GPIO5/6):
+  0x3C  SSD1306 OLED
+Bus B (software I2C, GPIO7/8):
+  (no devices)
+```
+
+</Step>
+
+<Step>
+
+**Check the panel actually lights up:**
+
+```sh
+gochi test oled
+```
+
+It writes "Hello" and asks if you can see it.
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  If `0x3C` shows up but the screen stays blank, the panel itself is
+  dead — address ACK happens at the bus level before any pixels are
+  drawn.
+</Callout>
+
+## Step 3 — Buzzer
+
+<Steps>
+
+<Step>
+
+**Place the buzzer on the breadboard.**
+
+</Step>
+
+<Step>
+
+**Wire it up:**
+
+- `+` (signal) → `GPIO10`
+- `−` → `−` rail
+
+</Step>
+
+<Step>
+
+**Verify:**
+
+```sh
+gochi test buzzer
+```
+
+You should hear a short musical phrase. The CLI then asks "Did you
+hear a tone?".
+
+</Step>
+
+</Steps>
+
+<Callout type="warn">
+  **Passive piezo only.** Active buzzers ignore tone signals and only
+  beep at a fixed pitch — they will not reproduce the firmware's
+  jingles. If you hear nothing, that's the first thing to check.
+</Callout>
+
+## Step 4 — MPU-6050 IMU
+
+The GY-521 has eight pins. You only use four.
+
+<Steps>
+
+<Step>
+
+**Place the MPU module on a free row.**
+
+</Step>
+
+<Step>
+
+**Wire it up:**
+
+- `VCC` → `+` rail
+- `GND` → `−` rail
+- `SCL` → `GPIO8`
+- `SDA` → `GPIO7`
+
+Leave `XDA`, `XCL`, `AD0`, and `INT` unconnected.
+
+</Step>
+
+<Step>
+
+**Verify the bus:**
+
+```sh
+gochi i2c
+```
+
+Both buses should now populate:
+
+```
+Bus A (hardware I2C, GPIO5/6):
+  0x3C  SSD1306 OLED
+Bus B (software I2C, GPIO7/8):
+  0x68  MPU-6050 IMU
+```
+
+</Step>
+
+<Step>
+
+**Test gestures:**
+
+```sh
+gochi test imu
+```
+
+Lift the device — face becomes `surprised`. Shake it firmly — face
+becomes `angry`.
+
+</Step>
+
+</Steps>
+
+<Callout type="warn">
+  **GPIO8 is a strapping pin.** The C3 samples it at reset to choose
+  between normal boot (HIGH) and flash-download mode (LOW). The MPU
+  holds it HIGH while connected. **Plug the MPU in before USB**, and
+  never reset the board with the MPU unplugged — otherwise the
+  firmware won't run.
+</Callout>
+
+<Callout type="info">
+  If `0x69` shows up instead of `0x68`, the `AD0` pin is being pulled
+  HIGH. Change `MPU_ADDR` to `0x69` in `firmware/src/config.h` and
+  reflash.
+</Callout>
+
+## Final check
+
+Run the full self-test:
+
+```sh
+gochi test all
+```
+
+It walks through serial → OLED → buzzer → IMU, asking a yes/no
+question after each. All green means you're done with the hardware.
+
+## Troubleshooting
+
+| Symptom | First thing to check |
+|---------|----------------------|
+| `gochi ping` doesn't return `PONG` | USB cable (data, not power); `gochi daemon status` |
+| OLED dark but `0x3C` shows up | Panel is dead — try another OLED |
+| OLED + `0x3C` both missing | `SDA`/`SCL` swapped; `VCC` on wrong rail |
+| Buzzer silent | It's an active buzzer, not passive |
+| MPU `0x68` missing | `SDA`/`SCL` swapped, or `AD0` pulled HIGH (try `0x69`) |
+| Board enters flash-download mode at boot | `GPIO8` floated LOW — MPU got unplugged |
+| Both devices stop ACKing | I²C bus shorted — rebuild one component at a time |
+
+For anything else, `gochi i2c` is the fastest tool — it tells you
+immediately whether a device is alive on the bus, which separates
+wiring problems from code problems.
