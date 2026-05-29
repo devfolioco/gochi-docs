@@ -259,7 +259,7 @@ void loop() {
 }`,
   },
   2: {
-    title: 'Level 2 · Voice',
+    title: 'Level 2 · Buzzer',
     subtitle: 'Add a passive piezo — its − leg shares the breadboard ground rail.',
     code: `#include "buzzer/buzzer.h"
 #include "assets/jingles.h"
@@ -447,15 +447,10 @@ export function Circuit() {
         <a href="/" className="circuit-back">← back</a>
         <div className="circuit-title">
           <span className="circuit-eyebrow">wiring · h.m.f #1</span>
-          <h1>Circuit Builder</h1>
+          <h1>Playground</h1>
         </div>
-        <a
-          href="https://github.com/devfolioco/gochi/blob/main/firmware/src/config.h"
-          target="_blank"
-          rel="noreferrer"
-          className="circuit-source"
-        >
-          config.h ↗
+        <a href="/docs" className="circuit-source">
+          docs →
         </a>
       </header>
 
@@ -835,15 +830,15 @@ export function Circuit() {
                 : level === 1
                 ? 'powered on'
                 : level === 2
-                ? buzzerLive ? 'powered on · voice live' : 'powered on'
+                ? buzzerLive ? 'powered on · buzzer live' : 'powered on'
                 : motionLive
                 ? 'powered on · motion live'
-                : buzzerLive ? 'powered on · voice live' : 'powered on'}
+                : buzzerLive ? 'powered on · buzzer live' : 'powered on'}
             </div>
             <button type="button" className="circuit-reset" onClick={reset}>reset</button>
             {level === 1 && allConnected && (
               <button type="button" className="circuit-next" onClick={() => setLevel(2)}>
-                next: voice →
+                next: buzzer →
               </button>
             )}
             {level === 2 && allConnected && (

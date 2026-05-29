@@ -16,7 +16,7 @@ export default function Page() {
           <span />
         </label>
         <nav>
-          <a href="/circuit">circuit</a>
+          <a href="/playground">playground</a>
           <a href="/docs">docs</a>
           <a href="https://github.com/devfolioco/gochi" target="_blank" rel="noreferrer">
             github
