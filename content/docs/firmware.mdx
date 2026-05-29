@@ -11,84 +11,13 @@ The firmware is plain C++ on the Arduino core, built and uploaded entirely
 from the terminal with [`arduino-cli`](https://arduino.github.io/arduino-cli/).
 There's no Arduino IDE involved.
 
-## One-time setup
+<Callout type="info">
+  If you haven't installed `arduino-cli` and the ESP32 core yet, do that
+  on the [Setup](/docs/setup) page first. This page covers the day-to-day
+  build/flash workflow once your toolchain is in place.
+</Callout>
 
-<Steps>
-
-<Step>
-
-**Clone the repo and `cd` into it.** Every command below — `make`, the
-`arduino-cli.yaml` config, the sketch — is run from the repo root, so do
-this first.
-
-```sh
-git clone https://github.com/devfolioco/gochi.git
-cd gochi
-```
-
-</Step>
-
-<Step>
-
-**Install arduino-cli.**
-
-<Tabs items={['macOS', 'Linux', 'Windows']}>
-
-<Tab value="macOS">
-
-```sh
-brew install arduino-cli
-```
-
-</Tab>
-
-<Tab value="Linux">
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-```
-
-This installs to `./bin/arduino-cli`. Move it onto your `PATH`, e.g.
-`sudo mv bin/arduino-cli /usr/local/bin/`.
-
-</Tab>
-
-<Tab value="Windows">
-
-The cleanest path is **scoop**:
-
-```ps
-scoop install arduino-cli
-```
-
-Or grab the [release binary](https://github.com/arduino/arduino-cli/releases)
-and put it on `%PATH%` yourself.
-
-</Tab>
-
-</Tabs>
-
-</Step>
-
-<Step>
-
-**Install the ESP32 core.** The repo ships its own `arduino-cli.yaml`, so
-this command is the same on every machine:
-
-```sh
-arduino-cli --config-file firmware/arduino-cli.yaml core update-index
-arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
-```
-
-The core is a ~300MB download. Get a coffee.
-
-</Step>
-
-<Step>
-
-**Plug the ESP32-C3 into a USB port.** Use a data cable, not a
-power-only one. A small **red power LED** on the board should light up —
-that means it's powered and enumerating. Then verify it's visible:
+Before the daily workflow, make sure the board is visible:
 
 ```sh
 make ports
@@ -96,15 +25,9 @@ make ports
 
 You should see something like `/dev/cu.usbmodem14101` (macOS),
 `/dev/ttyACM0` (Linux), or `COM5` (Windows) tagged with `esp32:esp32:esp32c3`.
-The trailing digits vary by machine and USB port (yours might be
-`/dev/cu.usbmodem101`) — match on the `usbmodem` / `ttyACM` / `COM` prefix
-and the `esp32c3` tag, not the exact number.
-
-If nothing shows up, see [Troubleshooting](#troubleshooting).
-
-</Step>
-
-</Steps>
+The trailing digits vary by machine and USB port — match on the
+`usbmodem` / `ttyACM` / `COM` prefix and the `esp32c3` tag, not the
+exact number. If nothing shows up, see [Troubleshooting](#troubleshooting).
 
 ## Daily workflow
 
