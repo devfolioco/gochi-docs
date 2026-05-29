@@ -5,6 +5,7 @@ description: One component at a time — wire it, verify it, then move on.
 
 import { Callout } from 'fumadocs-ui/components/callout'
 import { Steps, Step } from 'fumadocs-ui/components/steps'
+import { SuperMiniPinout } from '@/app/components/SuperMiniPinout'
 
 You've already seen the face in the [Quickstart](/docs/quickstart) — now
 build the real thing. This is the full pet on a half-size breadboard:
@@ -109,6 +110,15 @@ Nothing to test in `gochi` yet — we'll start once the OLED is in.
 </Step>
 
 </Steps>
+
+For reference — where the pins sit on the board, and the two jumpers you run
+in this step. USB powers the board, and the board feeds the breadboard: jumper
+`5V` → `+` rail and `GND` → `−` rail (shown on the left). Once it's pushed into
+the breadboard you can't read the silkscreen, so note that `5V` and `GND` are
+the top two on the left, and `GPIO5`/`GPIO6` (the OLED's `SDA`/`SCK`) are the
+top two on the right:
+
+<SuperMiniPinout />
 
 <Callout type="warn">
   The kit's OLED and MPU are **breakout modules with onboard regulators**,
