@@ -1,6 +1,6 @@
 # tamagotchi-website
 
-The workshop site for **Mr. Mini Tamagotchi** — H.M.F #1 at 2586 Labs.
+The site for **Mr. Mini Tamagotchi** — build your own tiny desk pet.
 
 A blueprint-blue landing page with a working SSD1306 face animation, plus a
 Fumadocs docs site at `/docs` for the build guide. Built on Next.js 16 App
@@ -176,7 +176,6 @@ file on disk — zero server cost.
 
 The firmware that actually runs on the pet lives in a sibling repo —
 ESP32-C3 SuperMini, Arduino core, built with `arduino-cli`. See the
-[hardware](/docs/hardware/soldering) and
-[firmware](/docs/firmware/flashing) docs for the workshop instructions,
-and [api/serial](/docs/api/serial) for the line-based protocol the pet
-speaks over USB CDC.
+[wiring](/docs/wiring) and [firmware](/docs/firmware) docs for the build
+instructions, and [serial](/docs/serial) for the line-based protocol the
+pet speaks over USB CDC.

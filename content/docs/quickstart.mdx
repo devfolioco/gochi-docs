@@ -1,0 +1,146 @@
+---
+title: Quickstart
+description: Zero to a blinking face. Four wires, one flash command, ~15 minutes.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+import { Steps, Step } from 'fumadocs-ui/components/steps'
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs'
+
+The fastest path to a living pet: wire **only the OLED**, flash the
+firmware, and watch the eyes blink. No breadboard, no soldering — four
+jumper wires straight onto the board. Sound and motion come later.
+
+<Callout type="info">
+  Just want the face on screen? You're in the right place. Once it blinks,
+  the [Wiring](/docs/wiring) page adds the buzzer and motion sensor.
+</Callout>
+
+## You'll need
+
+- **ESP32-C3 SuperMini**
+- **SSD1306 0.96" OLED** (I²C, 4 pins: `GND` `VDD` `SCK` `SDA`)
+- **4 jumper wires** (female-to-female is easiest here)
+- A **USB-C data cable** (not power-only) + your laptop
+
+## Get it blinking
+
+<Steps>
+
+<Step>
+
+**Clone the repo and `cd` into it.** Every command below runs from the
+repo root.
+
+```sh
+git clone https://github.com/devfolioco/gochi.git
+cd gochi
+```
+
+</Step>
+
+<Step>
+
+**Plug the ESP32-C3 into USB.** A small **red power LED** lights up — that's
+your sign it's powered. Leave it plugged in.
+
+</Step>
+
+<Step>
+
+**Connect the OLED — four wires.** Straight from the OLED to the ESP32-C3
+pins (read the OLED silkscreen; pin order varies between modules):
+
+| OLED pin | ESP32-C3 pin |
+| -------- | ------------ |
+| `VDD`    | `5V`         |
+| `GND`    | `G`          |
+| `SCK`    | `GPIO6`      |
+| `SDA`    | `GPIO5`      |
+
+<Callout type="warn">
+  This assumes a breakout module with an onboard regulator (the common
+  0.96" boards take 5 V on `VCC`). If yours is a **bare 3.3 V-only panel**,
+  use `3V3` instead — 5 V will damage it.
+</Callout>
+
+</Step>
+
+<Step>
+
+**Install the toolchain.** The firmware builds with
+[`arduino-cli`](https://arduino.github.io/arduino-cli/) — no Arduino IDE.
+
+<Tabs items={['macOS', 'Linux', 'Windows']}>
+<Tab value="macOS">
+
+```sh
+brew install arduino-cli
+```
+
+</Tab>
+<Tab value="Linux">
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+sudo mv bin/arduino-cli /usr/local/bin/   # put it on your PATH
+```
+
+</Tab>
+<Tab value="Windows">
+
+```ps
+scoop install arduino-cli
+```
+
+</Tab>
+</Tabs>
+
+Then install the ESP32 core (a ~300 MB download — grab a coffee):
+
+```sh
+arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
+```
+
+</Step>
+
+<Step>
+
+**Flash it.**
+
+```sh
+make flash
+```
+
+The port is auto-detected. If the upload hangs at *"Connecting…"*, hold
+**BOOT**, tap **RESET**, release **BOOT**, and run it again.
+
+</Step>
+
+<Step>
+
+**Watch the face.** A second or two after the flash completes, the OLED
+wakes up and the pet's eyes start blinking and drifting around. 🎉
+
+</Step>
+
+</Steps>
+
+<Callout type="info">
+  Screen still dark after a clean flash? Double-check `SDA`/`SCL` aren't
+  swapped and `VCC` is on `3V3`. More fixes on the
+  [Firmware](/docs/firmware#troubleshooting) page.
+</Callout>
+
+## Now make it more
+
+You have a pet. Here's how to grow it:
+
+- **[Wiring →](/docs/wiring)** — move onto a breadboard and add a buzzer
+  (sound) and an MPU-6050 (it reacts when you pick it up or shake it).
+- **[Firmware →](/docs/firmware)** — the full toolchain reference: daily
+  workflow, serial monitor, WSL2, troubleshooting.
+- **[Serial protocol →](/docs/serial)** — drive expressions and sounds
+  over USB from your own scripts.
+- **[Skills →](/docs/skills)** — let an AI coding agent control the pet.

@@ -6,11 +6,11 @@ description: Build a tiny desk pet in one evening — ESP32-C3, OLED, twelve moo
 import { Callout } from 'fumadocs-ui/components/callout'
 import { Card, Cards } from 'fumadocs-ui/components/card'
 
-This is the workshop guide for **Mr. Mini Tamagotchi** — a desk pet you'll
-solder, flash, and bring home from H.M.F #1 at 2586 Labs.
+This is the build guide for **Mr. Mini Tamagotchi** — a desk pet you wire
+up, flash, and bring to life yourself.
 
-You'll walk in with a bag of parts and walk out with a little robot whose
-eyes blink, drift around the room, and react when you talk to it over USB.
+Start with a bag of parts and end up with a little robot whose eyes blink,
+drift around the room, and react when you talk to it over USB.
 
 <Callout type="info">
   No prior electronics experience needed. If you can push a jumper wire
@@ -31,32 +31,45 @@ You bring:
 - A **USB-C to USB-C** or **USB-A to USB-C** cable — whichever matches your laptop. (A cable is in the kit too, but bring your own as backup; some are power-only and won't carry data.)
 - *Optional:* a **powerbank** — once flashed, the pet runs off any USB power source, so you can unplug from your laptop and take it around the room.
 
-## What you'll do, in order
+## Start here
+
+Don't read everything first — go get a win. The **Quickstart** wires up
+just the screen and flashes the firmware, so in about fifteen minutes
+you'll have a face blinking back at you. Everything else builds on that.
 
 <Cards>
-  <Card title="1. Wire it" href="/docs/hardware/wiring"
-        description="Breadboard the OLED, buzzer, and IMU onto the ESP32-C3. No soldering." />
-  <Card title="2. Flash the firmware" href="/docs/firmware/flashing"
-        description="Install arduino-cli, build the sketch, upload over USB-C." />
-  <Card title="3. Talk to it" href="/docs/api/serial"
-        description="Switch expressions, play sounds, and read state over a tiny serial protocol." />
+  <Card title="→ Quickstart" href="/docs/quickstart"
+        description="Four wires, one flash command, a blinking face. Start here." />
+</Cards>
+
+Once the eyes are blinking, keep going at your own pace:
+
+<Cards>
+  <Card title="Wiring" href="/docs/wiring"
+        description="Move onto a breadboard and add sound (buzzer) and motion (IMU)." />
+  <Card title="Firmware" href="/docs/firmware"
+        description="The full toolchain: daily workflow, serial monitor, troubleshooting." />
+  <Card title="Serial protocol" href="/docs/serial"
+        description="Switch expressions, play sounds, and read state over USB." />
+  <Card title="Skills" href="/docs/skills"
+        description="Let an AI coding agent drive the pet for you." />
 </Cards>
 
 ## Time budget
 
-| Stage          | Newcomer | Done this before |
-| -------------- | -------- | ---------------- |
-| Wiring         | 20 min   | 5 min            |
-| Toolchain      | 30 min   | 5 min            |
-| First flash    | 10 min   | 2 min            |
-| Playing with it| as long as you want |          |
+| Stage                    | Newcomer            | Done this before |
+| ------------------------ | ------------------- | ---------------- |
+| Quickstart (face on)     | 15 min              | 5 min            |
+| Adding buzzer + motion   | 20 min              | 5 min            |
+| Playing with it          | as long as you want |                  |
 
 ## Already comfortable?
 
-Skim the [hardware pin map](/docs/hardware/wiring#pin-map), grab the
-`make flash` workflow from the [firmware page](/docs/firmware/flashing#daily-workflow),
-and the [serial protocol reference](/docs/api/serial) is the source of
-truth for everything the pet can do.
+Jump straight to the [Quickstart](/docs/quickstart), then the
+[pin map](/docs/wiring#pin-map) and the `make flash`
+[workflow](/docs/firmware#daily-workflow). The
+[serial protocol](/docs/serial) is the source of truth for everything the
+pet can do.
 
 <Callout type="warn">
   The ESP32-C3 SuperMini has known USB-CDC quirks on first power-up. If

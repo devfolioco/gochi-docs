@@ -6,10 +6,13 @@ description: One component at a time — wire it, verify it, then move on.
 import { Callout } from 'fumadocs-ui/components/callout'
 import { Steps, Step } from 'fumadocs-ui/components/steps'
 
-Everything plugs into a half-size breadboard with dupont jumpers. **No
-soldering required.** Add one component, run the verify command, then
-move on. Mistakes are much easier to debug when you only just added one
-wire.
+You've already seen the face in the [Quickstart](/docs/quickstart) — now
+build the real thing. This is the full pet on a half-size breadboard:
+the OLED again (this time on the breadboard), plus a **buzzer** for sound
+and an **IMU** so it reacts when you pick it up or shake it.
+
+Add one component, run the verify command, then move on. Mistakes are
+much easier to debug when you only just added one wire.
 
 ## What you're building with
 
@@ -25,15 +28,33 @@ wire.
 
 ## Before you start
 
-You'll need the firmware on the board and the CLI working — the
-verify commands at each step depend on it.
+The verify commands at each step talk to the pet through the **`gochi`
+CLI** and its background daemon (which owns the USB serial port). Install
+it from the repo you already cloned — not the published package — so any
+changes you make to the CLI are the ones that run:
 
-- `make flash` has run successfully
+```sh
+cd cli                 # inside the gochi repo
+npm install            # or: bun install
+npm link               # or: bun link — registers `gochi` globally
+gochi setup            # installs the daemon — it auto-starts at login
+gochi ping             # check it's working — should print PONG
+```
+
+<Callout type="info">
+  There's no build step: the CLI runs its TypeScript sources directly (via
+  `tsx`), so editing anything under `cli/src` takes effect the next time you
+  run `gochi`.
+</Callout>
+
+With the CLI in place, confirm the firmware is flashed and the daemon is
+talking to the board:
+
+- `make flash` has run successfully — see [Flashing the firmware](/docs/firmware)
 - `gochi daemon status` prints `loaded`
 - `gochi ping` returns `PONG`
 
-If `gochi ping` fails, fix that first. See
-[Flashing the firmware](/docs/firmware/flashing).
+If `gochi ping` fails, fix that first.
 
 ## Pin map
 
@@ -42,10 +63,10 @@ the steps below.
 
 | ESP32-C3 | Goes to |
 |----------|---------|
-| `3V3` | breadboard `+` rail |
+| `5V` | breadboard `+` rail |
 | `GND` | breadboard `−` rail |
 | `GPIO5` | OLED `SDA` |
-| `GPIO6` | OLED `SCL` |
+| `GPIO6` | OLED `SCK` |
 | `GPIO7` | MPU `SDA` |
 | `GPIO8` | MPU `SCL` |
 | `GPIO10` | Buzzer signal |
@@ -70,13 +91,13 @@ centre gap.
 
 <Step>
 
-**Wire `3V3` → `+` rail** (red jumper, by convention).
+**Wire `5V` → `+` rail.**
 
 </Step>
 
 <Step>
 
-**Wire `GND` → `−` rail** (black jumper).
+**Wire `GND` → `−` rail.**
 
 </Step>
 
@@ -90,9 +111,9 @@ Nothing to test in `gochi` yet — we'll start once the OLED is in.
 </Steps>
 
 <Callout type="warn">
-  **Use `3V3`, not `5V`.** The SuperMini exposes both. All three
-  components are 3.3 V devices — feeding 5 V can damage the OLED and
-  makes I²C level translation unreliable on the MPU.
+  The kit's OLED and MPU are **breakout modules with onboard regulators**,
+  so `5V` on the `+` rail is what they expect. If you swapped in a **bare
+  3.3 V-only OLED panel**, feed it `3V3` instead — 5 V will kill it.
 </Callout>
 
 ## Step 2 — OLED
@@ -111,8 +132,8 @@ varies between modules.
 **Wire it up:**
 
 - `GND` → `−` rail
-- `VCC` → `+` rail
-- `SCL` → `GPIO6`
+- `VDD` → `+` rail
+- `SCK` → `GPIO6`
 - `SDA` → `GPIO5`
 
 </Step>
@@ -286,7 +307,7 @@ question after each. All green means you're done with the hardware.
 |---------|----------------------|
 | `gochi ping` doesn't return `PONG` | USB cable (data, not power); `gochi daemon status` |
 | OLED dark but `0x3C` shows up | Panel is dead — try another OLED |
-| OLED + `0x3C` both missing | `SDA`/`SCL` swapped; `VCC` on wrong rail |
+| OLED + `0x3C` both missing | `SDA`/`SCK` swapped; `VDD` on wrong rail |
 | Buzzer silent | It's an active buzzer, not passive |
 | MPU `0x68` missing | `SDA`/`SCL` swapped, or `AD0` pulled HIGH (try `0x69`) |
 | Board enters flash-download mode at boot | `GPIO8` floated LOW — MPU got unplugged |

@@ -1,19 +1,27 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { cycleExpression, ensureLoop, onExpressionChange } from './OledFace'
+import { ensureLoop, onExpressionChange, setExpression } from './OledFace'
 import { playJingle, unlockAudio } from './buzzer'
 
-// Pin map from firmware/src/config.h:
-//   PIN_SDA    = 5    OLED data           (level 1, blue)
-//   PIN_SCL    = 6    OLED clock          (level 1, yellow)
-//   OLED_VCC   = 3V3                       (level 1, red)
-//   OLED_GND   = G                         (level 1, black)
-//   PIN_BUZZER = 10   passive piezo PWM    (level 2, white)
-//   PIN_BTN_A  = 2    active-low to GND    (level 3, green)
-//   PIN_BTN_B  = 3    active-low to GND    (level 3, orange)
-//   PIN_BTN_C  = 4    active-low to GND    (level 3, magenta)
-//   PIN_BTN_BOOT = 9  on-board, no wiring
+// Layout mirrors docs/hardware/wiring.mdx: a half-size breadboard in the
+// centre, the ESP32-C3 SuperMini plugged across its centre gap, and the three
+// peripherals arranged around it — OLED above, buzzer left, MPU-6050 right.
+//
+// Level 1 mirrors the Quickstart: the OLED is wired STRAIGHT to the ESP header
+// (VDD→5V, GND→G, SCK→GPIO6, SDA→GPIO5) — four jumpers, no rails. The breadboard
+// rails only come into play from Level 2, when the buzzer and MPU need a shared
+// power/ground. The buzzer still shares the − rail rather than taking its own ESP
+// pin, so the header pin count stays exactly what config.h uses.
+//
+// Pin map (firmware/src/config.h):
+//   5V   → OLED VDD (L1, direct) · breadboard + rail (L2+)
+//   G    → OLED GND (L1, direct) · breadboard − rail (L2+)
+//   GP5  = PIN_SDA      OLED I²C data   (hardware bus)
+//   GP6  = PIN_SCL      OLED I²C clock  (hardware bus)
+//   GP7  = PIN_IMU_SDA  MPU I²C data    (software bus)
+//   GP8  = PIN_IMU_SCL  MPU I²C clock   (software bus)
+//   GP10 = PIN_BUZZER   passive piezo PWM
 
 type Pin = { id: string; cx: number; cy: number; label: string }
 type Comp = { id: string; pins: Pin[] }
@@ -22,9 +30,8 @@ type Wire = {
   level: 1 | 2 | 3
   from: { c: string; p: string }
   to: { c: string; p: string }
-  fromY?: number // override Y for the "from" anchor (e.g. OLED pin tip)
   dockX: number
-  dockY?: number
+  dockY: number
   color: string
   signal: string
   desc: string
@@ -33,134 +40,153 @@ type Wire = {
 const VB_W = 920
 const VB_H = 740
 
-// ---- Breadboard --------------------------------------------------------
-const BB_X = 40
-const BB_Y = 400
-const BB_W = 840
-const BB_H = 320
+// ---- Breadboard (centre) ----------------------------------------------
+const BB_X = 240
+const BB_Y = 250
+const BB_W = 440
+const BB_H = 240
+const BB_CX = BB_X + BB_W / 2 // 460
 
-// ---- ESP32-C3 SuperMini (sits on the breadboard) -----------------------
-const ESP_X = 280
-const ESP_Y = 440
-const ESP_W = 360
-const ESP_H = 250
+// power rails run along the top of the board, inside the frame
+const RAIL_POS_Y = BB_Y + 22 // red (+)
+const RAIL_NEG_Y = BB_Y + 40 // blue (−)
+const RAIL_L = BB_X + 16
+const RAIL_R = BB_X + BB_W - 16
 
-// ten possible pin slots across the top of the ESP32 — visible per level
-const ESP_PIN_Y = ESP_Y - 4
-const ESP_PIN_TIP_Y = ESP_PIN_Y - 30
+// ---- ESP32-C3 SuperMini (straddles the breadboard centre gap) ---------
+const ESP_X = 310
+const ESP_Y = 340
+const ESP_W = 300
+const ESP_H = 120
+
+// seven header pins along the top edge, ordered to sit closest to the part
+// each one serves (buzzer left · power+OLED centre · MPU right)
+const ESP_PIN_Y = ESP_Y
+const ESP_PIN_TIP_Y = ESP_Y - 30
 const ESP_PIN_STEP = 36
-const ESP_PIN_LEFT = ESP_X + 18
+const ESP_PIN_LEFT = BB_CX - 3 * ESP_PIN_STEP // centre the 7 pins on the board
 
 function espX(i: number) { return ESP_PIN_LEFT + i * ESP_PIN_STEP }
+//  0 GP10 · 1 G · 2 3V3 · 3 GP5 · 4 GP6 · 5 GP7 · 6 GP8
 
-//  index → semantic pin
-//   0 G_btn  · 1 GP2 · 2 GP3 · 3 GP4
-//   4 G     · 5 3V3 · 6 GP6 · 7 GP5     (the four OLED pins, centered)
-//   8 GP10  · 9 G_buz
-
-// ---- SSD1306 OLED breakout (floats above ESP32, lines up with OLED pins)
-const OLED_W = 320
-const OLED_PIN_XS = [espX(4), espX(5), espX(6), espX(7)]
-const OLED_X = (OLED_PIN_XS[0] + OLED_PIN_XS[3]) / 2 - OLED_W / 2
-const OLED_Y = 40
-const OLED_H = 200
+// ---- SSD1306 OLED breakout (above the board) --------------------------
+const OLED_X = 310
+const OLED_Y = 30
+const OLED_W = 300
+const OLED_H = 175
+const OLED_PIN_XS = [400, 440, 480, 520] // GND VCC SCL SDA
 const OLED_HEADER_Y = OLED_Y + OLED_H - 8
 const OLED_PAD_Y = OLED_HEADER_Y + 5
 const OLED_PLASTIC_Y = OLED_Y + OLED_H - 6
-const OLED_PIN_TIP_Y = OLED_PLASTIC_Y + 40
+const OLED_PIN_TIP_Y = OLED_PLASTIC_Y + 36
 
 const SCREEN_W = OLED_W * 0.8
 const SCREEN_H = SCREEN_W / 2
 const SCREEN_X = OLED_X + (OLED_W - SCREEN_W) / 2
-const SCREEN_Y = OLED_Y + 17
+const SCREEN_Y = OLED_Y + 16
 
-// ---- Piezo buzzer (level 2, sits on breadboard right of ESP32) --------
-const BUZ_X = 750
-const BUZ_Y = 560
-const BUZ_R = 44
+// ---- Piezo buzzer (left of the board) ---------------------------------
+const BUZ_X = 150
+const BUZ_Y = 372
+const BUZ_R = 42
+const BUZ_PAD_X = 212
 
-// ---- Push buttons (level 3, sit on breadboard left of ESP32) ----------
-const BTN_Y = 510
-const BTN_W = 46
-const BTN_H = 46
-const BTN_XS = [90, 165, 240]
-// breadboard ground rail — three button GND legs share it via on-board
-// traces; the user only plugs one wire from the rail terminal to ESP G.
-const RAIL_X = 60
-const RAIL_TOP_Y = 460
-const RAIL_BOT_Y = 600
-const RAIL_TERMINAL_Y = 440
+// ---- GY-521 / MPU-6050 breakout (right of the board) ------------------
+const MPU_X = 730
+const MPU_Y = 300
+const MPU_W = 120
+const MPU_H = 160
+const MPU_PAD_X = MPU_X - 4
+const MPU_PAD_YS = [MPU_Y + 30, MPU_Y + 60, MPU_Y + 90, MPU_Y + 120] // VCC GND SCL SDA
 
-// loose-end resting positions for each level's wires
-const DOCK_Y = (OLED_PIN_TIP_Y + ESP_PIN_TIP_Y) / 2 - 10
 const SNAP_RADIUS = 28
 
 const ESP: Comp = {
   id: 'esp',
   pins: [
-    { id: 'g_btn', cx: espX(0), cy: ESP_PIN_Y, label: 'G' },
-    { id: 'gp2', cx: espX(1), cy: ESP_PIN_Y, label: 'GP2' },
-    { id: 'gp3', cx: espX(2), cy: ESP_PIN_Y, label: 'GP3' },
-    { id: 'gp4', cx: espX(3), cy: ESP_PIN_Y, label: 'GP4' },
-    { id: 'g', cx: espX(4), cy: ESP_PIN_Y, label: 'G' },
-    { id: '3v3', cx: espX(5), cy: ESP_PIN_Y, label: '3V3' },
-    { id: 'gp6', cx: espX(6), cy: ESP_PIN_Y, label: 'GP6' },
-    { id: 'gp5', cx: espX(7), cy: ESP_PIN_Y, label: 'GP5' },
-    { id: 'gp10', cx: espX(8), cy: ESP_PIN_Y, label: 'GP10' },
-    { id: 'g_buz', cx: espX(9), cy: ESP_PIN_Y, label: 'G' },
+    { id: 'gp10', cx: espX(0), cy: ESP_PIN_Y, label: 'GP10' },
+    { id: 'g', cx: espX(1), cy: ESP_PIN_Y, label: 'G' },
+    { id: '5v', cx: espX(2), cy: ESP_PIN_Y, label: '5V' },
+    { id: 'gp5', cx: espX(3), cy: ESP_PIN_Y, label: 'GP5' },
+    { id: 'gp6', cx: espX(4), cy: ESP_PIN_Y, label: 'GP6' },
+    { id: 'gp7', cx: espX(5), cy: ESP_PIN_Y, label: 'GP7' },
+    { id: 'gp8', cx: espX(6), cy: ESP_PIN_Y, label: 'GP8' },
   ],
 }
 
 const OLED: Comp = {
   id: 'oled',
   pins: [
-    { id: 'gnd', cx: OLED_PIN_XS[0], cy: OLED_PAD_Y, label: 'GND' },
-    { id: 'vcc', cx: OLED_PIN_XS[1], cy: OLED_PAD_Y, label: 'VCC' },
-    { id: 'scl', cx: OLED_PIN_XS[2], cy: OLED_PAD_Y, label: 'SCL' },
-    { id: 'sda', cx: OLED_PIN_XS[3], cy: OLED_PAD_Y, label: 'SDA' },
+    { id: 'gnd', cx: OLED_PIN_XS[0], cy: OLED_PIN_TIP_Y, label: 'GND' },
+    { id: 'vcc', cx: OLED_PIN_XS[1], cy: OLED_PIN_TIP_Y, label: 'VDD' },
+    { id: 'scl', cx: OLED_PIN_XS[2], cy: OLED_PIN_TIP_Y, label: 'SCK' },
+    { id: 'sda', cx: OLED_PIN_XS[3], cy: OLED_PIN_TIP_Y, label: 'SDA' },
   ],
 }
 
 const BUZZER: Comp = {
   id: 'buzzer',
   pins: [
-    { id: 'sig', cx: BUZ_X - 16, cy: BUZ_Y - 12, label: 'S' },
-    { id: 'gnd', cx: BUZ_X - 16, cy: BUZ_Y + 12, label: 'G' },
+    { id: 'sig', cx: BUZ_PAD_X, cy: BUZ_Y - 12, label: 'S' },
+    { id: 'gnd', cx: BUZ_PAD_X, cy: BUZ_Y + 12, label: '−' },
   ],
 }
 
-// each button's signal leg is a wire endpoint; its GND leg is hard-wired
-// to the breadboard's GND rail (an internal trace, not user-facing).
-const BTN: Comp = {
-  id: 'btn',
+const MPU: Comp = {
+  id: 'mpu',
   pins: [
-    { id: 'a', cx: BTN_XS[0] + BTN_W - 6, cy: BTN_Y + 4, label: 'A' },
-    { id: 'b', cx: BTN_XS[1] + BTN_W - 6, cy: BTN_Y + 4, label: 'B' },
-    { id: 'c', cx: BTN_XS[2] + BTN_W - 6, cy: BTN_Y + 4, label: 'C' },
+    { id: 'vcc', cx: MPU_PAD_X, cy: MPU_PAD_YS[0], label: 'VCC' },
+    { id: 'gnd', cx: MPU_PAD_X, cy: MPU_PAD_YS[1], label: 'GND' },
+    { id: 'scl', cx: MPU_PAD_X, cy: MPU_PAD_YS[2], label: 'SCL' },
+    { id: 'sda', cx: MPU_PAD_X, cy: MPU_PAD_YS[3], label: 'SDA' },
   ],
 }
 
-const RAIL: Comp = {
-  id: 'rail',
-  pins: [{ id: 'gnd', cx: RAIL_X, cy: RAIL_TERMINAL_Y, label: 'GND rail' }],
+// breadboard power-rail terminals — the holes wires actually land on
+const RAIL_POS: Comp = {
+  id: 'railPos',
+  pins: [
+    { id: 'p_esp', cx: 430, cy: RAIL_POS_Y, label: '+' },
+    { id: 'p_oled', cx: 450, cy: RAIL_POS_Y, label: '+' },
+    { id: 'p_mpu', cx: 600, cy: RAIL_POS_Y, label: '+' },
+  ],
+}
+const RAIL_NEG: Comp = {
+  id: 'railNeg',
+  pins: [
+    { id: 'n_buz', cx: 300, cy: RAIL_NEG_Y, label: '−' },
+    { id: 'n_esp', cx: 388, cy: RAIL_NEG_Y, label: '−' },
+    { id: 'n_oled', cx: 410, cy: RAIL_NEG_Y, label: '−' },
+    { id: 'n_mpu', cx: 620, cy: RAIL_NEG_Y, label: '−' },
+  ],
 }
 
-const COMPS: Record<string, Comp> = { esp: ESP, oled: OLED, buzzer: BUZZER, btn: BTN, rail: RAIL }
+const COMPS: Record<string, Comp> = {
+  esp: ESP, oled: OLED, buzzer: BUZZER, mpu: MPU, railPos: RAIL_POS, railNeg: RAIL_NEG,
+}
+
+const C_GND = '#2a2d33'
+const C_VCC = '#c0392b'
+const C_SCL = '#d9b14a'
+const C_SDA = '#3b86b8'
+const C_SIG = '#e5e7eb'
 
 const WIRES: Wire[] = [
-  // Level 1 — OLED I²C
-  { id: 'w-gnd', level: 1, from: { c: 'oled', p: 'gnd' }, to: { c: 'esp', p: 'g' }, dockX: 360, color: '#2a2d33', signal: 'GND', desc: 'common ground' },
-  { id: 'w-vcc', level: 1, from: { c: 'oled', p: 'vcc' }, to: { c: 'esp', p: '3v3' }, dockX: 410, color: '#c0392b', signal: '3V3', desc: 'OLED power — never 5V (the SSD1306 panel is 3.3V only)' },
-  { id: 'w-scl', level: 1, from: { c: 'oled', p: 'scl' }, to: { c: 'esp', p: 'gp6' }, dockX: 460, color: '#d9b14a', signal: 'I²C SCL → GPIO6', desc: 'PIN_SCL in config.h' },
-  { id: 'w-sda', level: 1, from: { c: 'oled', p: 'sda' }, to: { c: 'esp', p: 'gp5' }, dockX: 510, color: '#3b86b8', signal: 'I²C SDA → GPIO5', desc: 'PIN_SDA in config.h' },
-  // Level 2 — passive piezo
-  { id: 'w-buz-sig', level: 2, from: { c: 'buzzer', p: 'sig' }, to: { c: 'esp', p: 'gp10' }, dockX: 700, color: '#e5e7eb', signal: 'PWM → GPIO10', desc: 'LEDC non-blocking tone, PIN_BUZZER in config.h' },
-  { id: 'w-buz-gnd', level: 2, from: { c: 'buzzer', p: 'gnd' }, to: { c: 'esp', p: 'g_buz' }, dockX: 760, color: '#2a2d33', signal: 'GND', desc: 'piezo return' },
-  // Level 3 — three buttons sharing a rail
-  { id: 'w-btn-a', level: 3, from: { c: 'btn', p: 'a' }, to: { c: 'esp', p: 'gp2' }, dockX: 180, dockY: DOCK_Y + 30, color: '#4ade80', signal: 'BTN_A → GPIO2', desc: 'PIN_BTN_A (active-low, INPUT_PULLUP)' },
-  { id: 'w-btn-b', level: 3, from: { c: 'btn', p: 'b' }, to: { c: 'esp', p: 'gp3' }, dockX: 230, dockY: DOCK_Y + 30, color: '#f59e0b', signal: 'BTN_B → GPIO3', desc: 'PIN_BTN_B (active-low, INPUT_PULLUP)' },
-  { id: 'w-btn-c', level: 3, from: { c: 'btn', p: 'c' }, to: { c: 'esp', p: 'gp4' }, dockX: 280, dockY: DOCK_Y + 30, color: '#ec4899', signal: 'BTN_C → GPIO4', desc: 'PIN_BTN_C (active-low, INPUT_PULLUP)' },
-  { id: 'w-rail-gnd', level: 3, from: { c: 'rail', p: 'gnd' }, to: { c: 'esp', p: 'g_btn' }, dockX: 120, dockY: DOCK_Y - 20, color: '#2a2d33', signal: 'rail GND', desc: 'one wire from the breadboard rail powers all three buttons' },
+  // Level 1 — OLED wired STRAIGHT to the ESP header (the Quickstart hookup)
+  { id: 'w-oled-vdd', level: 1, from: { c: 'oled', p: 'vcc' }, to: { c: 'esp', p: '5v' }, dockX: 430, dockY: 258, color: C_VCC, signal: 'OLED VDD → 5V', desc: '5 V power straight from the board' },
+  { id: 'w-oled-gnd', level: 1, from: { c: 'oled', p: 'gnd' }, to: { c: 'esp', p: 'g' }, dockX: 388, dockY: 262, color: C_GND, signal: 'OLED GND → G', desc: 'OLED ground' },
+  { id: 'w-oled-sck', level: 1, from: { c: 'oled', p: 'scl' }, to: { c: 'esp', p: 'gp6' }, dockX: 508, dockY: 272, color: C_SCL, signal: 'OLED SCK → GPIO6', desc: 'I²C clock — PIN_SCL in config.h' },
+  { id: 'w-oled-sda', level: 1, from: { c: 'oled', p: 'sda' }, to: { c: 'esp', p: 'gp5' }, dockX: 548, dockY: 272, color: C_SDA, signal: 'OLED SDA → GPIO5', desc: 'I²C data — PIN_SDA in config.h' },
+  // Level 2 — set up the breadboard rails, then add the passive piezo
+  { id: 'w-pwr-pos', level: 2, from: { c: 'esp', p: '5v' }, to: { c: 'railPos', p: 'p_esp' }, dockX: 300, dockY: 232, color: C_VCC, signal: '5V → + rail', desc: 'powers the breadboard + rail' },
+  { id: 'w-pwr-neg', level: 2, from: { c: 'esp', p: 'g' }, to: { c: 'railNeg', p: 'n_esp' }, dockX: 340, dockY: 244, color: C_GND, signal: 'GND → − rail', desc: 'one common ground for the rest of the build' },
+  { id: 'w-buz-sig', level: 2, from: { c: 'buzzer', p: 'sig' }, to: { c: 'esp', p: 'gp10' }, dockX: 296, dockY: 330, color: C_SIG, signal: 'PWM → GPIO10', desc: 'LEDC non-blocking tone, PIN_BUZZER' },
+  { id: 'w-buz-gnd', level: 2, from: { c: 'buzzer', p: 'gnd' }, to: { c: 'railNeg', p: 'n_buz' }, dockX: 290, dockY: 360, color: C_GND, signal: 'buzzer − → − rail', desc: 'shares the common ground — no dedicated ESP pin' },
+  // Level 3 — MPU-6050 IMU on a second, software I²C bus
+  { id: 'w-mpu-vcc', level: 3, from: { c: 'mpu', p: 'vcc' }, to: { c: 'railPos', p: 'p_mpu' }, dockX: 662, dockY: 300, color: C_VCC, signal: 'MPU VCC → + rail', desc: 'IMU power' },
+  { id: 'w-mpu-gnd', level: 3, from: { c: 'mpu', p: 'gnd' }, to: { c: 'railNeg', p: 'n_mpu' }, dockX: 666, dockY: 330, color: C_GND, signal: 'MPU GND → − rail', desc: 'IMU ground' },
+  { id: 'w-mpu-scl', level: 3, from: { c: 'mpu', p: 'scl' }, to: { c: 'esp', p: 'gp8' }, dockX: 656, dockY: 386, color: C_SCL, signal: 'I²C SCL → GPIO8', desc: 'PIN_IMU_SCL — software I²C bus' },
+  { id: 'w-mpu-sda', level: 3, from: { c: 'mpu', p: 'sda' }, to: { c: 'esp', p: 'gp7' }, dockX: 660, dockY: 416, color: C_SDA, signal: 'I²C SDA → GPIO7', desc: 'PIN_IMU_SDA — software I²C bus' },
 ]
 
 function pinOf(c: string, p: string): Pin | undefined {
@@ -181,7 +207,7 @@ type Level = 1 | 2 | 3
 const LEVELS: Record<Level, { title: string; subtitle: string; code: string }> = {
   1: {
     title: 'Level 1 · Display',
-    subtitle: 'Get the OLED talking I²C so the pet has a face.',
+    subtitle: 'Four jumpers straight from the OLED to the board — no rails yet — and the face wakes up.',
     code: `#include <Wire.h>
 #include <U8g2lib.h>
 #include "config.h"
@@ -201,7 +227,7 @@ void loop() {
   },
   2: {
     title: 'Level 2 · Voice',
-    subtitle: 'Add a passive piezo so every face change gets a jingle.',
+    subtitle: 'Add a passive piezo — its − leg shares the breadboard ground rail.',
     code: `#include "buzzer/buzzer.h"
 #include "assets/jingles.h"
 
@@ -219,23 +245,22 @@ void loop() {
 }`,
   },
   3: {
-    title: 'Level 3 · Touch',
-    subtitle: 'Three momentary buttons on the breadboard — poke the pet.',
-    code: `#include "config.h"
+    title: 'Level 3 · Motion',
+    subtitle: 'Add the MPU-6050 on a second I²C bus so the pet feels how you handle it.',
+    code: `#include "imu/imu.h"
+#include "config.h"
 
 void setup() {
-  // Buttons share the breadboard's GND rail. INPUT_PULLUP enables the
-  // ESP32-C3's internal ~45kΩ pull-up so each pin idles HIGH and reads
-  // LOW only while pressed.
-  pinMode(PIN_BTN_A, INPUT_PULLUP);  // GPIO2
-  pinMode(PIN_BTN_B, INPUT_PULLUP);  // GPIO3
-  pinMode(PIN_BTN_C, INPUT_PULLUP);  // GPIO4
+  // The MPU runs on a separate SOFTWARE I²C bus (GPIO7/8) so it never
+  // fights the OLED for the hardware bus or drops the pull-ups too low.
+  imu::begin(PIN_IMU_SDA, PIN_IMU_SCL);   // GPIO7 / GPIO8
 }
 
 void loop() {
-  if (digitalRead(PIN_BTN_A) == LOW) onMoodPress();
-  if (digitalRead(PIN_BTN_B) == LOW) onModePress();
-  if (digitalRead(PIN_BTN_C) == LOW) onFacePress();   // cycles expression
+  imu::update();                          // read accel, run gesture filter
+
+  if (imu::lifted()) face.set(SURPRISED); // sudden +Z acceleration
+  if (imu::shaken()) face.set(ANGRY);     // jerk past the threshold
 }`,
   },
 }
@@ -248,7 +273,7 @@ export function Circuit() {
     Object.fromEntries(WIRES.map((w) => [w.id, 'idle' as const])),
   )
   const [drag, setDrag] = useState<Drag | null>(null)
-  const [pressedBtn, setPressedBtn] = useState<string | null>(null)
+  const [gesture, setGesture] = useState<string | null>(null)
 
   const activeWires = useMemo(() => WIRES.filter((w) => w.level <= level), [level])
   const connectedCount = useMemo(
@@ -261,12 +286,15 @@ export function Circuit() {
     () => WIRES.filter((w) => w.level === 1).every((w) => conn[w.id] === 'connected'),
     [conn],
   )
+  const powered = conn['w-oled-vdd'] === 'connected' && conn['w-oled-gnd'] === 'connected'
   const buzzerLive =
     level >= 2 && conn['w-buz-sig'] === 'connected' && conn['w-buz-gnd'] === 'connected'
-  const buttonsLive =
+  const motionLive =
     level >= 3 &&
-    conn['w-rail-gnd'] === 'connected' &&
-    (conn['w-btn-a'] === 'connected' || conn['w-btn-b'] === 'connected' || conn['w-btn-c'] === 'connected')
+    conn['w-mpu-vcc'] === 'connected' &&
+    conn['w-mpu-gnd'] === 'connected' &&
+    conn['w-mpu-scl'] === 'connected' &&
+    conn['w-mpu-sda'] === 'connected'
 
   useEffect(() => {
     if (oledLit) ensureLoop()
@@ -326,7 +354,7 @@ export function Circuit() {
     e.preventDefault()
     const w = WIRES.find((x) => x.id === wireId)
     if (!w) return
-    setDrag({ wireId, x: w.dockX, y: w.dockY ?? DOCK_Y })
+    setDrag({ wireId, x: w.dockX, y: w.dockY })
   }
 
   const toggleSidebar = (wireId: string) => {
@@ -336,23 +364,15 @@ export function Circuit() {
 
   const reset = () => setConn(Object.fromEntries(WIRES.map((w) => [w.id, 'idle' as const])))
 
-  const wireFrom = (w: Wire) => {
-    if (w.from.c === 'oled') return { x: pinOf(w.from.c, w.from.p)!.cx, y: OLED_PIN_TIP_Y }
-    if (w.from.c === 'buzzer' || w.from.c === 'btn' || w.from.c === 'rail') {
-      return { x: pinOf(w.from.c, w.from.p)!.cx, y: pinOf(w.from.c, w.from.p)!.cy }
-    }
-    return { x: pinOf(w.from.c, w.from.p)!.cx, y: pinOf(w.from.c, w.from.p)!.cy }
-  }
-
   function wireGeometry(w: Wire): { tipX: number; tipY: number; connected: boolean; dragging: boolean } {
     if (drag?.wireId === w.id) {
       return { tipX: drag.x, tipY: drag.y, connected: false, dragging: true }
     }
     if (conn[w.id] === 'connected') {
       const t = pinOf(w.to.c, w.to.p)!
-      return { tipX: t.cx, tipY: ESP_PIN_TIP_Y, connected: true, dragging: false }
+      return { tipX: t.cx, tipY: t.cy, connected: true, dragging: false }
     }
-    return { tipX: w.dockX, tipY: w.dockY ?? DOCK_Y, connected: false, dragging: false }
+    return { tipX: w.dockX, tipY: w.dockY, connected: false, dragging: false }
   }
 
   const snapTargetId = useMemo(() => {
@@ -372,22 +392,35 @@ export function Circuit() {
     return new Set([`${w.from.c}:${w.from.p}`, `${w.to.c}:${w.to.p}`])
   }, [hoverWire])
 
-  // Visible ESP32 pins are gated on level
+  // ESP pins and rail terminals that are actually used at this level
   const visibleEspPins = useMemo(() => {
-    const oledIds = ['g', '3v3', 'gp6', 'gp5']
-    const buzIds = ['gp10', 'g_buz']
-    const btnIds = ['g_btn', 'gp2', 'gp3', 'gp4']
-    const ids = [...oledIds, ...(level >= 2 ? buzIds : []), ...(level >= 3 ? btnIds : [])]
-    return ESP.pins.filter((p) => ids.includes(p.id))
-  }, [level])
+    const inPlay = new Set<string>()
+    activeWires.forEach((w) => {
+      if (w.from.c === 'esp') inPlay.add(w.from.p)
+      if (w.to.c === 'esp') inPlay.add(w.to.p)
+    })
+    return ESP.pins.filter((p) => inPlay.has(p.id))
+  }, [activeWires])
 
-  const pressButton = (id: string) => {
-    if (!buttonsLive) return
-    const wireId = `w-btn-${id}`
-    if (conn[wireId] !== 'connected') return
-    setPressedBtn(id)
-    cycleExpression()
-    setTimeout(() => setPressedBtn(null), 140)
+  const visibleRailTerminals = useMemo(() => {
+    const pos = new Set<string>()
+    const neg = new Set<string>()
+    activeWires.forEach((w) => {
+      if (w.to.c === 'railPos') pos.add(w.to.p)
+      if (w.to.c === 'railNeg') neg.add(w.to.p)
+    })
+    return {
+      pos: RAIL_POS.pins.filter((p) => pos.has(p.id)),
+      neg: RAIL_NEG.pins.filter((p) => neg.has(p.id)),
+    }
+  }, [activeWires])
+
+  const triggerGesture = (kind: 'lift' | 'shake') => {
+    if (!motionLive) return
+    unlockAudio()
+    setExpression(kind === 'lift' ? 'surprised' : 'angry')
+    setGesture(kind)
+    setTimeout(() => setGesture(null), 220)
   }
 
   return (
@@ -471,10 +504,6 @@ export function Circuit() {
                 <stop offset="60%" stopColor="#1a1c22" />
                 <stop offset="100%" stopColor="#0a0b0d" />
               </radialGradient>
-              <linearGradient id="cb-btn-cap" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3a3d45" />
-                <stop offset="100%" stopColor="#1a1c22" />
-              </linearGradient>
               <filter id="cb-glow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="2.5" />
               </filter>
@@ -484,33 +513,66 @@ export function Circuit() {
             <g>
               <rect x={BB_X} y={BB_Y} width={BB_W} height={BB_H} rx={8}
                 fill="url(#cb-bb)" stroke="#8a7a3e" strokeWidth={1.4} />
-              {/* power rails: red (+) and blue (-) along the top */}
-              <line x1={BB_X + 14} y1={BB_Y + 14} x2={BB_X + BB_W - 14} y2={BB_Y + 14}
-                stroke="#c0392b" strokeWidth={1.2} opacity={0.6} />
-              <line x1={BB_X + 14} y1={BB_Y + 28} x2={BB_X + BB_W - 14} y2={BB_Y + 28}
-                stroke="#2c5e9e" strokeWidth={1.2} opacity={0.6} />
-              {/* hole grid */}
-              <rect x={BB_X + 14} y={BB_Y + 40} width={BB_W - 28} height={BB_H - 80}
+              {/* top power rails */}
+              <line x1={RAIL_L} y1={RAIL_POS_Y} x2={RAIL_R} y2={RAIL_POS_Y}
+                stroke="#c0392b" strokeWidth={1.4} opacity={0.55} />
+              <line x1={RAIL_L} y1={RAIL_NEG_Y} x2={RAIL_R} y2={RAIL_NEG_Y}
+                stroke="#2c5e9e" strokeWidth={1.4} opacity={0.55} />
+              {/* hole grid between the rails and the bottom rails */}
+              <rect x={BB_X + 14} y={BB_Y + 54} width={BB_W - 28} height={BB_H - 96}
                 fill="url(#bb-holes)" opacity={0.7} />
-              {/* center groove */}
+              {/* centre groove where the ESP straddles */}
               <rect x={BB_X + 14} y={BB_Y + BB_H / 2 - 4} width={BB_W - 28} height={8}
                 fill="#b8a878" opacity={0.35} />
-              {/* rails at the bottom too */}
-              <line x1={BB_X + 14} y1={BB_Y + BB_H - 28} x2={BB_X + BB_W - 14} y2={BB_Y + BB_H - 28}
-                stroke="#c0392b" strokeWidth={1.2} opacity={0.6} />
-              <line x1={BB_X + 14} y1={BB_Y + BB_H - 14} x2={BB_X + BB_W - 14} y2={BB_Y + BB_H - 14}
-                stroke="#2c5e9e" strokeWidth={1.2} opacity={0.6} />
+              {/* bottom power rails */}
+              <line x1={RAIL_L} y1={BB_Y + BB_H - 40} x2={RAIL_R} y2={BB_Y + BB_H - 40}
+                stroke="#c0392b" strokeWidth={1.4} opacity={0.55} />
+              <line x1={RAIL_L} y1={BB_Y + BB_H - 22} x2={RAIL_R} y2={BB_Y + BB_H - 22}
+                stroke="#2c5e9e" strokeWidth={1.4} opacity={0.55} />
 
-              {/* silkscreen marking on the breadboard */}
-              <text x={BB_X + BB_W - 16} y={BB_Y + BB_H - 4}
+              <text x={BB_X + BB_W - 16} y={BB_Y + BB_H - 6}
                 textAnchor="end"
                 fontFamily="'Pixelify Sans', monospace" fontSize={9}
                 fill="#7a6a3a" opacity={0.7}>
-                breadboard · 830 tie-points
+                breadboard · 400 tie-points
               </text>
+
+              {/* rail terminals the wires land on */}
+              {visibleRailTerminals.pos.map((p) => {
+                const isHot = hoveredPins.has(`railPos:${p.id}`)
+                const isSnap = snapTargetId === `railPos:${p.id}`
+                return (
+                  <g key={`rp-${p.id}`}>
+                    {isSnap && (
+                      <circle cx={p.cx} cy={p.cy} r={12} fill="none" stroke="#22c55e" strokeWidth={2}>
+                        <animate attributeName="r" values="9;14;9" dur="900ms" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="1;0.4;1" dur="900ms" repeatCount="indefinite" />
+                      </circle>
+                    )}
+                    <circle cx={p.cx} cy={p.cy} r={isHot || isSnap ? 4.5 : 3.2} fill="url(#cb-pad)" />
+                    <circle cx={p.cx} cy={p.cy} r={1.3} fill="#5a1410" />
+                  </g>
+                )
+              })}
+              {visibleRailTerminals.neg.map((p) => {
+                const isHot = hoveredPins.has(`railNeg:${p.id}`)
+                const isSnap = snapTargetId === `railNeg:${p.id}`
+                return (
+                  <g key={`rn-${p.id}`}>
+                    {isSnap && (
+                      <circle cx={p.cx} cy={p.cy} r={12} fill="none" stroke="#22c55e" strokeWidth={2}>
+                        <animate attributeName="r" values="9;14;9" dur="900ms" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="1;0.4;1" dur="900ms" repeatCount="indefinite" />
+                      </circle>
+                    )}
+                    <circle cx={p.cx} cy={p.cy} r={isHot || isSnap ? 4.5 : 3.2} fill="url(#cb-pad)" />
+                    <circle cx={p.cx} cy={p.cy} r={1.3} fill="#0a2540" />
+                  </g>
+                )
+              })}
             </g>
 
-            {/* ---- SSD1306 OLED breakout ---- */}
+            {/* ---- SSD1306 OLED breakout (above) ---- */}
             <g>
               <rect x={OLED_X} y={OLED_Y} width={OLED_W} height={OLED_H} rx={8}
                 fill="url(#cb-pcb)" stroke="#0a3522" strokeWidth={1.2} />
@@ -594,7 +656,88 @@ export function Circuit() {
               ))}
             </g>
 
-            {/* ---- ESP32-C3 SuperMini (plugged into the breadboard) ---- */}
+            {/* ---- piezo buzzer (left, level 2) ---- */}
+            {level >= 2 && (
+              <g>
+                <circle cx={BUZ_X} cy={BUZ_Y} r={BUZ_R}
+                  fill="url(#cb-piezo)" stroke="#0a0b0d" strokeWidth={1.5} />
+                <circle cx={BUZ_X} cy={BUZ_Y} r={BUZ_R - 6}
+                  fill="none" stroke="#2a2d33" strokeWidth={1} opacity={0.6} />
+                <circle cx={BUZ_X} cy={BUZ_Y} r={4}
+                  fill="#0a0b0d" stroke="#5a4220" strokeWidth={1} />
+                {buzzerLive && [10, 20, 30].map((r, i) => (
+                  <circle key={`rip-${i}`} cx={BUZ_X} cy={BUZ_Y} r={r}
+                    fill="none" stroke="#f5b941" strokeWidth={1.2} opacity={0.6}>
+                    <animate attributeName="r"
+                      values={`${r};${r + 14};${r + 28}`}
+                      dur="1600ms" begin={`${i * 0.5}s`} repeatCount="indefinite" />
+                    <animate attributeName="opacity"
+                      values="0.55;0.25;0"
+                      dur="1600ms" begin={`${i * 0.5}s`} repeatCount="indefinite" />
+                  </circle>
+                ))}
+                <text x={BUZ_X} y={BUZ_Y + BUZ_R + 16} textAnchor="middle"
+                  fontFamily="'Pixelify Sans', monospace" fontSize={10}
+                  fill={SILK} opacity={0.7}>
+                  PIEZO
+                </text>
+                {/* leads to the pin pads (facing the board) */}
+                <line x1={BUZ_X + 8} y1={BUZ_Y - 12} x2={BUZ_PAD_X} y2={BUZ_Y - 12}
+                  stroke="#caa05a" strokeWidth={1.5} />
+                <line x1={BUZ_X + 8} y1={BUZ_Y + 12} x2={BUZ_PAD_X} y2={BUZ_Y + 12}
+                  stroke="#caa05a" strokeWidth={1.5} />
+                {BUZZER.pins.map((p) => {
+                  const isHot = hoveredPins.has(`buzzer:${p.id}`)
+                  return (
+                    <g key={`bpin-${p.id}`}>
+                      <circle cx={p.cx} cy={p.cy} r={isHot ? 4 : 3} fill="url(#cb-pad)" />
+                      <circle cx={p.cx} cy={p.cy} r={1.3} fill="#06241a" />
+                      <text x={p.cx + 8} y={p.cy + 3} textAnchor="start"
+                        fontFamily="'Pixelify Sans', monospace" fontSize={8}
+                        fill={SILK} opacity={0.75}>{p.label}</text>
+                    </g>
+                  )
+                })}
+              </g>
+            )}
+
+            {/* ---- MPU-6050 IMU breakout (right, level 3) ---- */}
+            {level >= 3 && (
+              <g>
+                <rect x={MPU_X} y={MPU_Y} width={MPU_W} height={MPU_H} rx={8}
+                  fill="url(#cb-pcb)" stroke="#0a3522" strokeWidth={1.2} />
+                <rect x={MPU_X} y={MPU_Y} width={MPU_W} height={MPU_H} rx={8}
+                  fill="url(#cb-fine)" pointerEvents="none" />
+                {/* the IMU chip */}
+                <rect x={MPU_X + MPU_W / 2 - 16} y={MPU_Y + MPU_H / 2 - 16}
+                  width={32} height={32} rx={2}
+                  fill="#15171c" stroke="#22252b" strokeWidth={0.8} />
+                <circle cx={MPU_X + MPU_W / 2 - 11} cy={MPU_Y + MPU_H / 2 - 11} r={1.4} fill="#caa05a" />
+                <text x={MPU_X + MPU_W - 10} y={MPU_Y + 16} textAnchor="end"
+                  fontFamily="'Pixelify Sans', monospace" fontSize={9}
+                  fill={SILK} opacity={0.8}>GY-521</text>
+                <text x={MPU_X + MPU_W - 10} y={MPU_Y + MPU_H - 8} textAnchor="end"
+                  fontFamily="'Pixelify Sans', monospace" fontSize={8}
+                  fill={SILK} opacity={0.55}>MPU-6050</text>
+                {/* pads on the left edge, facing the board */}
+                {MPU.pins.map((p) => {
+                  const isHot = hoveredPins.has(`mpu:${p.id}`)
+                  return (
+                    <g key={`mpin-${p.id}`}>
+                      <line x1={MPU_X} y1={p.cy} x2={p.cx} y2={p.cy}
+                        stroke="#caa05a" strokeWidth={1.4} />
+                      <circle cx={p.cx} cy={p.cy} r={isHot ? 4 : 3} fill="url(#cb-pad)" />
+                      <circle cx={p.cx} cy={p.cy} r={1.3} fill="#06241a" />
+                      <text x={MPU_X + 6} y={p.cy + 3} textAnchor="start"
+                        fontFamily="'Pixelify Sans', monospace" fontSize={8}
+                        fill={SILK} opacity={isHot ? 1 : 0.75}>{p.label}</text>
+                    </g>
+                  )
+                })}
+              </g>
+            )}
+
+            {/* ---- ESP32-C3 SuperMini (plugged across the centre gap) ---- */}
             <g>
               {visibleEspPins.map((p) => {
                 const isHot = hoveredPins.has(`esp:${p.id}`)
@@ -634,7 +777,7 @@ export function Circuit() {
               {visibleEspPins.map((p) => {
                 const isHot = hoveredPins.has(`esp:${p.id}`)
                 return (
-                  <text key={`elbl-${p.id}`} x={p.cx} y={ESP_Y + 30}
+                  <text key={`elbl-${p.id}`} x={p.cx} y={ESP_Y + 28}
                     textAnchor="middle"
                     fontFamily="'Pixelify Sans', monospace" fontSize={9}
                     fill={SILK} opacity={isHot ? 1 : 0.85}>
@@ -656,48 +799,41 @@ export function Circuit() {
               ))}
 
               {/* SoC */}
-              <g transform={`translate(${ESP_X + ESP_W / 2 - 55} ${ESP_Y + 70})`}>
-                <rect width={110} height={80} rx={3}
+              <g transform={`translate(${ESP_X + ESP_W / 2 - 50} ${ESP_Y + 40})`}>
+                <rect width={100} height={56} rx={3}
                   fill="#15171c" stroke="#22252b" strokeWidth={0.8} />
-                {Array.from({ length: 11 }).map((_, i) => (
+                {Array.from({ length: 10 }).map((_, i) => (
                   <g key={`pp-${i}`}>
                     <rect x={6 + i * 9} y={-3} width={4} height={6} fill="#9c8048" />
-                    <rect x={6 + i * 9} y={77} width={4} height={6} fill="#9c8048" />
+                    <rect x={6 + i * 9} y={53} width={4} height={6} fill="#9c8048" />
                   </g>
                 ))}
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <g key={`sp-${i}`}>
-                    <rect x={-3} y={6 + i * 8} width={6} height={4} fill="#9c8048" />
-                    <rect x={107} y={6 + i * 8} width={6} height={4} fill="#9c8048" />
-                  </g>
-                ))}
-                <text x={55} y={36} textAnchor="middle"
+                <text x={50} y={26} textAnchor="middle"
                   fontFamily="'Pixelify Sans', monospace" fontSize={12}
                   fill="#a8aab2" letterSpacing={1}>ESP32-C3</text>
-                <text x={55} y={52} textAnchor="middle"
+                <text x={50} y={42} textAnchor="middle"
                   fontFamily="'Pixelify Sans', monospace" fontSize={10}
                   fill="#74767e" letterSpacing={1}>SuperMini</text>
-                <circle cx={8} cy={8} r={1.4} fill="#caa05a" />
               </g>
 
-              {/* USB-C */}
-              <g transform={`translate(${ESP_X + ESP_W / 2 - 40} ${ESP_Y + ESP_H - 30})`}>
-                <rect width={80} height={26} rx={5} fill="#2a2d35" stroke="#3a3d45" />
-                <rect x={8} y={6} width={64} height={14} rx={2} fill="#0a0b0d" />
-                <text x={40} y={16} textAnchor="middle"
+              {/* USB-C on the bottom edge */}
+              <g transform={`translate(${ESP_X + ESP_W / 2 - 40} ${ESP_Y + ESP_H - 22})`}>
+                <rect width={80} height={22} rx={5} fill="#2a2d35" stroke="#3a3d45" />
+                <rect x={8} y={5} width={64} height={12} rx={2} fill="#0a0b0d" />
+                <text x={40} y={14} textAnchor="middle"
                   fontFamily="'Pixelify Sans', monospace" fontSize={8}
                   fill="#7a7c84" letterSpacing={2}>USB-C</text>
               </g>
 
-              {/* power LED */}
-              <g transform={`translate(${ESP_X + ESP_W - 35} ${ESP_Y + 70})`}>
+              {/* power LED — lights once both power-rail jumpers are in */}
+              <g transform={`translate(${ESP_X + ESP_W - 28} ${ESP_Y + 30})`}>
                 <circle r={5} fill="#08211a" stroke="#041511" />
-                {conn['w-gnd'] === 'connected' && conn['w-vcc'] === 'connected' && (
+                {powered && (
                   <circle r={2.8} fill="#22c55e" filter="url(#cb-glow)" opacity={0.95} />
                 )}
               </g>
 
-              <text x={ESP_X + ESP_W / 2} y={ESP_Y + ESP_H - 6}
+              <text x={ESP_X + ESP_W / 2} y={ESP_Y + ESP_H - 4}
                 textAnchor="middle"
                 fontFamily="'Pixelify Sans', monospace" fontSize={9}
                 fill={SILK} opacity={0.55} letterSpacing={1.2}>
@@ -705,110 +841,11 @@ export function Circuit() {
               </text>
             </g>
 
-            {/* ---- piezo buzzer (level 2) ---- */}
-            {level >= 2 && (
-              <g>
-                <circle cx={BUZ_X} cy={BUZ_Y} r={BUZ_R}
-                  fill="url(#cb-piezo)" stroke="#0a0b0d" strokeWidth={1.5} />
-                <circle cx={BUZ_X} cy={BUZ_Y} r={BUZ_R - 6}
-                  fill="none" stroke="#2a2d33" strokeWidth={1} opacity={0.6} />
-                <circle cx={BUZ_X} cy={BUZ_Y} r={4}
-                  fill="#0a0b0d" stroke="#5a4220" strokeWidth={1} />
-                {buzzerLive && [10, 20, 30].map((r, i) => (
-                  <circle key={`rip-${i}`} cx={BUZ_X} cy={BUZ_Y} r={r}
-                    fill="none" stroke="#f5b941" strokeWidth={1.2} opacity={0.6}>
-                    <animate attributeName="r"
-                      values={`${r};${r + 14};${r + 28}`}
-                      dur="1600ms" begin={`${i * 0.5}s`} repeatCount="indefinite" />
-                    <animate attributeName="opacity"
-                      values="0.55;0.25;0"
-                      dur="1600ms" begin={`${i * 0.5}s`} repeatCount="indefinite" />
-                  </circle>
-                ))}
-                <text x={BUZ_X} y={BUZ_Y + BUZ_R + 14} textAnchor="middle"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={10}
-                  fill="#3a3d45" opacity={0.95}>
-                  PIEZO
-                </text>
-                {/* leads to the pin pads */}
-                <line x1={BUZ_X - 8} y1={BUZ_Y - 12} x2={BUZ_X - 16} y2={BUZ_Y - 12}
-                  stroke="#caa05a" strokeWidth={1.5} />
-                <line x1={BUZ_X - 8} y1={BUZ_Y + 12} x2={BUZ_X - 16} y2={BUZ_Y + 12}
-                  stroke="#caa05a" strokeWidth={1.5} />
-                <circle cx={BUZ_X - 16} cy={BUZ_Y - 12} r={3} fill="url(#cb-pad)" />
-                <circle cx={BUZ_X - 16} cy={BUZ_Y + 12} r={3} fill="url(#cb-pad)" />
-                <text x={BUZ_X - 24} y={BUZ_Y - 8} textAnchor="end"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={8}
-                  fill="#3a3d45" opacity={0.85}>S</text>
-                <text x={BUZ_X - 24} y={BUZ_Y + 17} textAnchor="end"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={8}
-                  fill="#3a3d45" opacity={0.85}>G</text>
-              </g>
-            )}
-
-            {/* ---- push buttons (level 3) ---- */}
-            {level >= 3 && (
-              <g>
-                {/* GND rail on the breadboard with a labeled terminal */}
-                <line x1={RAIL_X} y1={RAIL_TOP_Y} x2={RAIL_X} y2={RAIL_BOT_Y}
-                  stroke="#2c5e9e" strokeWidth={3} opacity={0.7} />
-                <circle cx={RAIL_X} cy={RAIL_TERMINAL_Y} r={4.5} fill="url(#cb-pad)" />
-                <circle cx={RAIL_X} cy={RAIL_TERMINAL_Y} r={1.8} fill="#06241a" />
-                <text x={RAIL_X - 8} y={RAIL_TERMINAL_Y + 3} textAnchor="end"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={8}
-                  fill="#3a3d45" opacity={0.85}>GND</text>
-
-                {/* connector traces from each button's GND leg to the rail */}
-                {BTN_XS.map((x) => (
-                  <line key={`trace-${x}`}
-                    x1={x + 4} y1={BTN_Y + BTN_H - 2}
-                    x2={x + 4} y2={BB_Y + BB_H - 14}
-                    stroke="#caa05a" strokeWidth={1.2} opacity={0.7} />
-                ))}
-                <line x1={BB_X + 14} y1={BB_Y + BB_H - 14}
-                  x2={BTN_XS[BTN_XS.length - 1] + 4} y2={BB_Y + BB_H - 14}
-                  stroke="#caa05a" strokeWidth={1.2} opacity={0.7} />
-
-                {/* the buttons themselves */}
-                {(['a', 'b', 'c'] as const).map((id, i) => {
-                  const x = BTN_XS[i]
-                  const isPressed = pressedBtn === id
-                  return (
-                    <g key={`btn-${id}`}
-                      style={{ cursor: buttonsLive ? 'pointer' : 'default' }}
-                      onClick={() => pressButton(id)}>
-                      {/* body */}
-                      <rect x={x} y={BTN_Y} width={BTN_W} height={BTN_H} rx={3}
-                        fill="url(#cb-btn-cap)" stroke="#0a0b0d" strokeWidth={0.8} />
-                      {/* legs */}
-                      <rect x={x - 2} y={BTN_Y + 4} width={3} height={4} fill="url(#cb-pin-metal)" />
-                      <rect x={x - 2} y={BTN_Y + BTN_H - 8} width={3} height={4} fill="url(#cb-pin-metal)" />
-                      <rect x={x + BTN_W - 1} y={BTN_Y + 4} width={3} height={4} fill="url(#cb-pin-metal)" />
-                      <rect x={x + BTN_W - 1} y={BTN_Y + BTN_H - 8} width={3} height={4} fill="url(#cb-pin-metal)" />
-                      {/* cap */}
-                      <circle cx={x + BTN_W / 2} cy={BTN_Y + BTN_H / 2} r={isPressed ? 12 : 14}
-                        fill="#4a4d55" stroke="#0a0b0d" strokeWidth={0.8} />
-                      <circle cx={x + BTN_W / 2} cy={BTN_Y + BTN_H / 2} r={isPressed ? 9 : 11}
-                        fill="url(#cb-btn-cap)" />
-                      {/* label */}
-                      <text x={x + BTN_W / 2} y={BTN_Y + BTN_H / 2 + 4} textAnchor="middle"
-                        fontFamily="'Pixelify Sans', monospace" fontSize={10}
-                        fill={SILK} opacity={0.95}>
-                        {id.toUpperCase()}
-                      </text>
-                      {/* signal pad on top-right (where the wire connects) */}
-                      <circle cx={x + BTN_W - 6} cy={BTN_Y + 4} r={3} fill="url(#cb-pad)" />
-                    </g>
-                  )
-                })}
-              </g>
-            )}
-
             {/* ---- wires ---- */}
             {activeWires.map((w) => {
-              const from = wireFrom(w)
+              const from = pinOf(w.from.c, w.from.p)!
               const g = wireGeometry(w)
-              const path = curve(from.x, from.y, g.tipX, g.tipY)
+              const path = curve(from.cx, from.cy, g.tipX, g.tipY)
               const isHover = hoverWire === w.id
               return (
                 <g key={w.id}
@@ -841,6 +878,33 @@ export function Circuit() {
                 </g>
               )
             })}
+
+            {/* ---- IMU gesture pads (level 3, once the MPU is live) ---- */}
+            {level >= 3 && (
+              <g>
+                {(['lift', 'shake'] as const).map((kind, i) => {
+                  const gx = MPU_X
+                  const gy = MPU_Y + MPU_H + 18 + i * 34
+                  const pressed = gesture === kind
+                  return (
+                    <g key={`ges-${kind}`}
+                      style={{ cursor: motionLive ? 'pointer' : 'default' }}
+                      onClick={() => triggerGesture(kind)}>
+                      <rect x={gx} y={gy} width={MPU_W} height={26} rx={6}
+                        fill={pressed ? '#1d6a40' : 'url(#cb-header-plastic)'}
+                        stroke={motionLive ? '#22c55e' : '#3a3d45'}
+                        strokeWidth={1}
+                        opacity={motionLive ? 1 : 0.4} />
+                      <text x={gx + MPU_W / 2} y={gy + 17} textAnchor="middle"
+                        fontFamily="'Pixelify Sans', monospace" fontSize={11}
+                        fill={SILK} opacity={motionLive ? 0.95 : 0.5}>
+                        {kind === 'lift' ? '↑ lift' : '↯ shake'}
+                      </text>
+                    </g>
+                  )
+                })}
+              </g>
+            )}
           </svg>
         </section>
 
@@ -857,7 +921,9 @@ export function Circuit() {
                 ? 'powered on'
                 : level === 2
                 ? buzzerLive ? 'powered on · voice live' : 'powered on'
-                : buttonsLive ? 'powered on · all peripherals live' : 'powered on · voice live'}
+                : motionLive
+                ? 'powered on · motion live'
+                : buzzerLive ? 'powered on · voice live' : 'powered on'}
             </div>
             <button type="button" className="circuit-reset" onClick={reset}>reset</button>
             {level === 1 && allConnected && (
@@ -867,7 +933,7 @@ export function Circuit() {
             )}
             {level === 2 && allConnected && (
               <button type="button" className="circuit-next" onClick={() => setLevel(3)}>
-                next: touch →
+                next: motion →
               </button>
             )}
           </section>
@@ -875,8 +941,8 @@ export function Circuit() {
           <section className="circuit-list">
             <h2>Connections</h2>
             <p className="circuit-list__hint">
-              Drag a gold tip onto the matching ESP32 pin — or click a row
-              to plug / unplug instantly.
+              Drag a gold tip onto the matching ESP32 pin or breadboard rail —
+              or click a row to plug / unplug instantly.
             </p>
             <ul>
               {activeWires.map((w) => {
@@ -897,9 +963,10 @@ export function Circuit() {
                 )
               })}
             </ul>
-            {level === 3 && buttonsLive && (
+            {level === 3 && motionLive && (
               <p className="circuit-list__hint" style={{ marginTop: 10 }}>
-                Buttons are live — click A / B / C on the breadboard to poke the pet.
+                IMU is live — tap <strong>lift</strong> or <strong>shake</strong>{' '}
+                under the MPU to trigger a reaction.
               </p>
             )}
           </section>

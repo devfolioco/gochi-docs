@@ -1,4 +1,4 @@
 {
   "title": "tamagotchi",
-  "pages": ["index", "hardware", "firmware", "skills", "api"]
+  "pages": ["index", "quickstart", "wiring", "firmware", "serial", "skills"]
 }

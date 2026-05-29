@@ -362,6 +362,15 @@ export function cycleExpression() {
   machine.nextAutoChangeAt = now + AUTO_CHANGE_MS
 }
 
+// Jump straight to a specific expression — used by the IMU/motion demo so a
+// "lift" maps to `surprised` and a "shake" maps to `angry`, mirroring the
+// firmware's gesture → face mapping.
+export function setExpression(next: Expression) {
+  const now = performance.now()
+  changeExpression(next, now)
+  machine.nextAutoChangeAt = now + AUTO_CHANGE_MS
+}
+
 // Expression-change pub/sub — external listeners (e.g. the buzzer page)
 // get told whenever the pet swaps to a new face.
 type ExpressionListener = (expr: Expression) => void
@@ -404,7 +413,7 @@ function frame(now: number) {
     onExpressionChanged(now)
   }
 
-  // random expression change every 3s (workshop demo behavior)
+  // random expression change every 3s (idle demo behavior)
   if (initialized && !machine.changing && now >= machine.nextAutoChangeAt) {
     changeExpression(randomOtherExpression(), now)
     machine.nextAutoChangeAt = now + AUTO_CHANGE_MS

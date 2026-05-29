@@ -4,7 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'tamagotchi — build your own desk pet',
   description:
-    'A hands-on workshop: solder an ESP32-C3, flash the firmware, and walk out with a tiny OLED pet whose eyes follow you around the room.',
+    'Build your own tiny desk pet: wire up an ESP32-C3 and an OLED, flash the firmware, and end up with a pet whose eyes follow you around the room.',
 }
 
 export default function RootLayout({

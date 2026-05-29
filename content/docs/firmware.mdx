@@ -17,6 +17,19 @@ There's no Arduino IDE involved.
 
 <Step>
 
+**Clone the repo and `cd` into it.** Every command below — `make`, the
+`arduino-cli.yaml` config, the sketch — is run from the repo root, so do
+this first.
+
+```sh
+git clone https://github.com/devfolioco/gochi.git
+cd gochi
+```
+
+</Step>
+
+<Step>
+
 **Install arduino-cli.**
 
 <Tabs items={['macOS', 'Linux', 'Windows']}>
@@ -73,7 +86,9 @@ The core is a ~300MB download. Get a coffee.
 
 <Step>
 
-**Verify the board is visible.**
+**Plug the ESP32-C3 into a USB port.** Use a data cable, not a
+power-only one. A small **red power LED** on the board should light up —
+that means it's powered and enumerating. Then verify it's visible:
 
 ```sh
 make ports
@@ -81,6 +96,9 @@ make ports
 
 You should see something like `/dev/cu.usbmodem14101` (macOS),
 `/dev/ttyACM0` (Linux), or `COM5` (Windows) tagged with `esp32:esp32:esp32c3`.
+The trailing digits vary by machine and USB port (yours might be
+`/dev/cu.usbmodem101`) — match on the `usbmodem` / `ttyACM` / `COM` prefix
+and the `esp32c3` tag, not the exact number.
 
 If nothing shows up, see [Troubleshooting](#troubleshooting).
 
@@ -104,14 +122,45 @@ plugged in.
 | `make format`       | Auto-format all sources                       |
 | `make ports`        | List connected ESP32 boards                   |
 | `make clean`        | Delete build artifacts                        |
+| `make erase`        | Wipe the entire flash (factory reset)         |
 
 The first build takes ~30 seconds. Subsequent rebuilds are 2–5 seconds
 (arduino-cli caches aggressively).
 
+When you run `make monitor` you'll land on a line like:
+
+```
+Connecting to /dev/cu.usbmodem101. Press CTRL-C to exit.
+```
+
+That's it — you're connected. The monitor stays attached and streams the
+board's serial output; hit `Ctrl-C` when you want to detach.
+
+## Wiping the board
+
+`make clean` only deletes the **host-side build folder** — it doesn't
+touch the chip. To wipe the board itself (the app, plus saved NVS data
+like wifi credentials), use `make erase`:
+
+```sh
+make erase
+```
+
+It finds `esptool` on your `PATH` — or falls back to the copy bundled with
+the ESP32 core, so there's nothing extra to install — frees the serial
+port if the `gochi` daemon is holding it, and chip-erases the flash. The
+board is blank afterwards; run `make flash` to put the firmware back.
+
+<Callout type="info">
+  If it hangs at *"Connecting…"*, [force download mode](#force-download-mode)
+  (hold **BOOT**, tap **RESET**, release **BOOT**) and re-run. Pass
+  `PORT=...` if you have more than one board plugged in.
+</Callout>
+
 <Callout type="info">
   Use `make flash-monitor` 90% of the time. It builds, uploads, and
   drops you into the serial console so you can immediately interact with
-  the pet over the [serial protocol](/docs/api/serial).
+  the pet over the [serial protocol](/docs/serial).
 </Callout>
 
 ## OLED I²C address
