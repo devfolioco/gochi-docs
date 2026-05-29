@@ -44,14 +44,17 @@ your sign it's powered. Leave it plugged in.
 
 <Step>
 
-**Install the toolchain.** You need two things: [`arduino-cli`](https://arduino.github.io/arduino-cli/)
-to build and flash the firmware (no Arduino IDE), and [`bun`](https://bun.sh)
-to run the `gochi` CLI you'll install on the [Wiring](/docs/wiring) page.
+**Install the toolchain.** You need three things: `make` to drive the
+build (every workflow command is a `make` target),
+[`arduino-cli`](https://arduino.github.io/arduino-cli/) to compile and
+flash the firmware (no Arduino IDE), and [`bun`](https://bun.sh) to run
+the `gochi` CLI you'll install on the [Wiring](/docs/wiring) page.
 
 <Tabs items={['macOS', 'Linux', 'Windows']}>
 <Tab value="macOS">
 
 ```sh
+xcode-select --install            # provides `make` (no-op if already installed)
 brew install arduino-cli
 brew install oven-sh/bun/bun
 ```
@@ -60,6 +63,8 @@ brew install oven-sh/bun/bun
 <Tab value="Linux">
 
 ```sh
+sudo apt-get install -y build-essential   # provides `make` and a C toolchain
+
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 sudo mv bin/arduino-cli /usr/local/bin/   # put it on your PATH
 
@@ -70,12 +75,26 @@ curl -fsSL https://bun.sh/install | bash
 <Tab value="Windows">
 
 ```ps
+scoop install make
 scoop install arduino-cli
 powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
+<Callout type="info">
+  Run these from a shell where `make` is on your `PATH` — Git Bash, MSYS2,
+  or WSL all work. PowerShell after `scoop install make` is fine too.
+</Callout>
+
 </Tab>
 </Tabs>
+
+Confirm everything's reachable:
+
+```sh
+make --version
+arduino-cli version
+bun --version
+```
 
 Then install the ESP32 core (a ~300 MB download — grab a coffee):
 
