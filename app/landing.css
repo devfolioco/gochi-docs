@@ -58,11 +58,20 @@
 
 /* topbar */
 .topbar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 9px;
   padding-bottom: 28px;
+}
+
+/* hamburger toggle — CSS-only (checkbox hack), only shows on mobile */
+.nav-toggle {
+  display: none;
+}
+.nav-burger {
+  display: none;
 }
 
 .brand {
@@ -101,6 +110,66 @@
     grid-template-columns: 1fr;
     gap: 56px;
     padding: 48px 0;
+  }
+}
+
+/* mobile: collapse the nav into a hamburger menu */
+@media (max-width: 600px) {
+  .nav-burger {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 32px;
+    padding: 6px 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-burger span {
+    display: block;
+    height: 4px;
+    width: 100%;
+    border-radius: 0; /* crisp, blocky — matches the pixel font */
+    background: var(--text-h);
+    box-shadow: 2px 2px 0 0 var(--ink);
+    transition: transform 200ms steps(3, end), opacity 120ms step-end;
+  }
+  /* animate to an X when open */
+  .nav-toggle:checked ~ .nav-burger span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+  }
+  .nav-toggle:checked ~ .nav-burger span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle:checked ~ .nav-burger span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+  }
+
+  .topbar nav {
+    position: absolute;
+    top: calc(100% - 10px);
+    right: 0;
+    flex-direction: column;
+    gap: 0;
+    min-width: 168px;
+    padding: 6px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+    display: none;
+    z-index: 50;
+  }
+  .nav-toggle:checked ~ nav {
+    display: flex;
+  }
+  .topbar nav a {
+    display: block;
+    padding: 11px 14px;
+    color: var(--text-h);
+  }
+  .topbar nav a:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 

@@ -303,7 +303,7 @@ export function Circuit() {
   const [level, setLevel] = useState<Level>(1)
   const [hoverWire, setHoverWire] = useState<string | null>(null)
   const [placements, setPlacements] = useState<Record<string, { a: Place | null; b: Place | null }>>(
-    () => Object.fromEntries(WIRES.map((w) => [w.id, { a: holeForNode(w.a, w.b), b: holeForNode(w.b, w.a) }])),
+    () => Object.fromEntries(WIRES.map((w) => [w.id, { a: null, b: null }])),
   )
   const [drag, setDrag] = useState<{ wireId: string; end: 'a' | 'b'; x: number; y: number } | null>(null)
   const [gesture, setGesture] = useState<string | null>(null)

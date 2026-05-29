@@ -9,6 +9,12 @@ export default function Page() {
     <main className="page">
       <header className="topbar">
         <span className="brand">tamagotchi</span>
+        <input type="checkbox" id="nav-toggle" className="nav-toggle" aria-label="Toggle menu" />
+        <label htmlFor="nav-toggle" className="nav-burger" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </label>
         <nav>
           <a href="/circuit">circuit</a>
           <a href="/docs">docs</a>
@@ -36,15 +42,12 @@ export default function Page() {
             Tamagotchi
           </h1>
           <p className="lede">
-            Solder an ESP32-C3 onto a tiny OLED, flash the firmware, and walk
-            out with a tamagotchi whose eyes blink and drift around the room.
-            One evening, from parts on the table to a pet on your desk.
+            Wire an ESP32-C3 to a tiny OLED on a breadboard, flash the firmware,
+            and a pixel face blinks back. Add a buzzer for sound and a motion
+            sensor so it reacts when you pick it up — then poke it over USB or let
+            an AI coding agent run it. From a bag of parts to a pet on your desk
+            in one evening.
           </p>
-
-          <ul className="tags">
-            <li className="tag tag-date">30 May, 2026</li>
-            <li className="tag tag-place">@ 2586 Labs</li>
-          </ul>
 
           <div className="cta">
             <a className="btn primary" href="/docs">
