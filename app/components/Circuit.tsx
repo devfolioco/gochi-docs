@@ -576,7 +576,7 @@ export function Circuit() {
               {[ROWS_TOP[0] - 12, GAP_MID + 3, ROWS_BOT[ROWS_BOT.length - 1] + 22].map((ny, row) =>
                 COL_XS.map((cx, i) => (
                   <text key={`cn-${row}-${i}`} x={cx} y={ny} textAnchor="middle"
-                    fontFamily="ui-monospace, monospace" fontSize={8}
+                    fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8}
                     fill="#6f5f2c" opacity={(i + 1) % 5 === 0 ? 1 : 0.65}>{i + 1}</text>
                 )),
               )}
@@ -586,7 +586,7 @@ export function Circuit() {
                 ...ROWS_BOT.map((ry, i) => [ry, 'EDCBA'[i]] as const)].map(([ry, ltr]) =>
                 [BB_X + 7, col(NCOLS) + 13].map((lx, k) => (
                   <text key={`rl-${ltr}-${k}`} x={lx} y={ry + 3} textAnchor="middle"
-                    fontFamily="ui-monospace, monospace" fontSize={8}
+                    fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8}
                     fill="#8a7a3e" opacity={0.75}>{ltr}</text>
                 )),
               )}
@@ -596,7 +596,7 @@ export function Circuit() {
                  [RB_NEG, '−', '#2c5e9e'], [RB_POS, '+', '#c0392b']] as const).map(([ry, sym, c]) =>
                 [BB_X + 7, col(NCOLS) + 13].map((lx, k) => (
                   <text key={`rm-${ry}-${k}`} x={lx} y={ry + 3.5} textAnchor="middle"
-                    fontFamily="ui-monospace, monospace" fontSize={10} fontWeight={700}
+                    fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={10} fontWeight={700}
                     fill={c} opacity={0.85}>{sym}</text>
                 )),
               )}
@@ -620,7 +620,7 @@ export function Circuit() {
                       fill="url(#cb-pin-metal)" opacity={used ? 1 : 0.55} />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" opacity={used ? 1 : 0.6} />
                     <text x={p.cx} y={isTop ? p.cy - 9 : p.cy + 16} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8} fontWeight={700}
                       fill="#43370f" opacity={used ? 1 : 0.55}>
                       {p.label}
                     </text>
@@ -693,12 +693,12 @@ export function Circuit() {
                 </foreignObject>
               ) : (
                 <text x={SCREEN_X + SCREEN_W / 2} y={SCREEN_Y + SCREEN_H / 2 + 4}
-                  textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize={9}
+                  textAnchor="middle" fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={9}
                   fill={SILK} opacity={0.25}>awaiting power</text>
               )}
               {OLED.pins.map((p) => (
                 <text key={`olbl-${p.id}`} x={p.cx} y={OLED_HEAD_Y - 6} textAnchor="middle"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={8}
+                  fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8}
                   fill="#43370f" opacity={0.85}>{p.label}</text>
               ))}
             </g>
@@ -727,7 +727,7 @@ export function Circuit() {
                     <circle cx={p.cx} cy={p.cy} r={2.4} fill="#0a0b0d" opacity={0.6} />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
                     <text x={p.cx} y={p.cy + 14} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={9} fontWeight={700}
+                      fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={9} fontWeight={700}
                       fill="#43370f" opacity={0.85}>{p.label}</text>
                   </g>
                 ))}
@@ -745,7 +745,7 @@ export function Circuit() {
                       fill="url(#cb-pin-metal)" opacity={0.55} />
                     <circle cx={col(c as number)} cy={MPU_PAD_Y} r={3} fill="url(#cb-pad)" opacity={0.6} />
                     <text x={col(c as number)} y={MPU_PAD_Y + 14} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8} fontWeight={700}
                       fill="#43370f" opacity={0.5}>{lbl}</text>
                   </g>
                 ))}
@@ -756,7 +756,7 @@ export function Circuit() {
                       fill="url(#cb-pin-metal)" />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
                     <text x={p.cx} y={p.cy + 14} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={8} fontWeight={700}
                       fill="#43370f" opacity={1}>{p.label}</text>
                   </g>
                 ))}
@@ -799,7 +799,7 @@ export function Circuit() {
                   height={activeWires.length * TRAY_STEP + 16} rx={8}
                   fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
                 <text x={TRAY_X + TRAY_W / 2} y={TRAY_Y0 - 14} textAnchor="middle"
-                  fontFamily="'Pixelify Sans', monospace" fontSize={9}
+                  fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={9}
                   fill={SILK} opacity={0.6}>jumper wires</text>
               </g>
             )}
@@ -834,7 +834,7 @@ export function Circuit() {
                     strokeLinecap="round" />
                   {fullyParked && (
                     <text x={TRAY_BX + 16} y={pa.y + 3.5} textAnchor="start"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={9}
+                      fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={9}
                       fill={SILK} opacity={isHover ? 1 : 0.8}>{SHORT[w.a]} → {SHORT[w.b]}</text>
                   )}
                   {tip(pa, 'a')}
@@ -854,7 +854,7 @@ export function Circuit() {
                   <rect x={-bw / 2} y={-10} width={bw} height={20} rx={5}
                     fill="#0b2e1c" stroke="#22c55e" strokeWidth={1} opacity={0.97} />
                   <text x={0} y={4} textAnchor="middle"
-                    fontFamily="'Pixelify Sans', monospace" fontSize={9} fill="#d7f5e3">{text}</text>
+                    fontFamily="'Geist Mono', ui-monospace, monospace" fontSize={9} fill="#d7f5e3">{text}</text>
                 </g>
               )
             })()}
