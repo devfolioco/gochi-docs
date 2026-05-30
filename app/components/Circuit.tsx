@@ -573,7 +573,7 @@ export function Circuit() {
                 fill="#c8b988" opacity={0.5} />
               <line x1={BB_X + 10} y1={GAP_MID} x2={BB_X + BB_W - 10} y2={GAP_MID}
                 stroke="#9c8a52" strokeWidth={1} opacity={0.5} />
-              {[GAP_MID + 3, ROWS_BOT[ROWS_BOT.length - 1] + 22].map((ny, row) =>
+              {[ROWS_TOP[0] - 12, GAP_MID + 3, ROWS_BOT[ROWS_BOT.length - 1] + 22].map((ny, row) =>
                 COL_XS.map((cx, i) => (
                   <text key={`cn-${row}-${i}`} x={cx} y={ny} textAnchor="middle"
                     fontFamily="ui-monospace, monospace" fontSize={8}
