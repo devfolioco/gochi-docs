@@ -322,3 +322,4 @@ question after each. All green means you're done.
 | `make test-mpu` shows no movement | `SDA`/`SCL` swapped, or `AD0` pulled HIGH — see config note above |
 | Board enters flash-download mode at boot | `GPIO8` floated LOW — MPU got unplugged |
 | `gochi ping` doesn't return `PONG` | `gochi daemon status` — daemon may not be running |
+| `Port busy` / port already in use | Something else holds the serial port. Run `gochi stop` to release it (or `gochi kill` to terminate the daemon). Still busy? Unplug and replug the board, or try a different USB port. |

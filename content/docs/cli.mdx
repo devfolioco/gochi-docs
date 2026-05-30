@@ -33,6 +33,13 @@ gochi --version
   loaded next time you run a command.
 </Callout>
 
+<Callout type="warn">
+  **`Port busy`?** Something else is holding the serial port. Run `gochi
+  stop` to release it, or `gochi kill` to terminate the daemon completely.
+  If it's still busy, unplug and replug the board, or try a different USB
+  port.
+</Callout>
+
 ## Drive the pet
 
 | Command                | Args                                  | What it does                                              |
