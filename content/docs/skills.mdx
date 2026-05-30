@@ -95,6 +95,15 @@ bun link                # registers the `gochi` command globally
 gochi server install    # writes a launchd plist (macOS) — auto-starts at login
 ```
 
+<Callout type="info">
+  If `gochi: command not found` after `bun link`, Bun's global bin directory
+  probably isn't on your `PATH`. Add it:
+
+  ```sh
+  export PATH="$HOME/.bun/bin:$PATH"   # add to ~/.zshrc or ~/.bashrc to persist
+  ```
+</Callout>
+
 Verify:
 
 ```sh

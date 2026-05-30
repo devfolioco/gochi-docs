@@ -289,6 +289,15 @@ gochi ping             # should print PONG
 ```
 
 <Callout type="info">
+  If `gochi: command not found` after `bun link`, Bun's global bin directory
+  probably isn't on your `PATH`. Add it:
+
+  ```sh
+  export PATH="$HOME/.bun/bin:$PATH"   # add to ~/.zshrc or ~/.bashrc to persist
+  ```
+</Callout>
+
+<Callout type="info">
   There's no build step: the CLI runs its TypeScript sources directly (via
   `tsx`), so editing anything under `cli/src` takes effect the next time you
   run `gochi`.
