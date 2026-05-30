@@ -313,7 +313,7 @@ void loop() {
 
 export function Circuit() {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [level, setLevel] = useState<Level>(3)
+  const [level, setLevel] = useState<Level>(1)
   const [hoverWire, setHoverWire] = useState<string | null>(null)
   const [placements, setPlacements] = useState<Record<string, { a: Place | null; b: Place | null }>>(
     () => Object.fromEntries(WIRES.map((w) => [w.id, { a: null, b: null }])),
