@@ -1,9 +1,9 @@
-# gochi installer — Windows (PowerShell, Admin).
-# Usage:  Open PowerShell as Administrator, then:
-#         powershell -c "irm gochi.in/install.ps1 | iex"
+# gochi installer — Windows (PowerShell, winget).
+# Usage:  powershell -c "iex (iwr https://gochi.in/install.ps1).Content"
 #
-# Bootstraps Chocolatey if missing, then installs git, make,
-# arduino-cli, and bun. Idempotent — safe to re-run.
+# Installs the toolchain via winget: git, make, arduino-cli, bun.
+# No Administrator needed for most installs — a UAC prompt may pop up
+# for GnuWin32.Make. Idempotent — safe to re-run.
 #
 # After this, clone the gochi repo and install the ESP32 core yourself:
 #   git clone https://github.com/devfolioco/gochi.git
@@ -12,6 +12,10 @@
 #   arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
 
 $ErrorActionPreference = "Stop"
+
+# TLS 1.2 for any WebClient downloads (e.g. the bun fallback).
+[System.Net.ServicePointManager]::SecurityProtocol =
+  [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
 function Say($m)  { Write-Host "==> $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "  v $m" -ForegroundColor Green }
@@ -25,33 +29,42 @@ function Refresh-Path {
               [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-# --- admin check ------------------------------------------------------
-
-$current = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $current.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)) {
-  Die "This installer needs an elevated PowerShell. Re-open PowerShell as Administrator and run it again."
+function Winget-Install($id) {
+  # --scope user keeps it out of Program Files when the package supports
+  # it; falls back gracefully when it doesn't. Accept agreements so the
+  # script doesn't stall on prompts.
+  winget install --exact --id $id `
+    --silent `
+    --accept-source-agreements `
+    --accept-package-agreements `
+    --scope user 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    # Retry without --scope user — some packages (e.g. GnuWin32.Make)
+    # are machine-scope only.
+    winget install --exact --id $id `
+      --silent `
+      --accept-source-agreements `
+      --accept-package-agreements
+  }
 }
 
 Say "gochi installer - Windows"
 
-# --- Chocolatey -------------------------------------------------------
+# --- winget itself ----------------------------------------------------
 
-if (-not (Have choco)) {
-  Say "Installing Chocolatey..."
-  Set-ExecutionPolicy Bypass -Scope Process -Force
-  [System.Net.ServicePointManager]::SecurityProtocol =
-    [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-  Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-  Refresh-Path
+if (-not (Have winget)) {
+  Die @"
+winget not found. Install 'App Installer' from the Microsoft Store, then
+re-run this script. (winget ships with Windows 10 1809+ and Windows 11.)
+"@
 }
-if (-not (Have choco)) { Die "Chocolatey install failed. Restart PowerShell and re-run." }
-Ok "choco: $(choco --version)"
+Ok "winget: $(winget --version)"
 
 # --- git --------------------------------------------------------------
 
 if (-not (Have git)) {
   Say "Installing git..."
-  choco install -y git
+  Winget-Install "Git.Git"
   Refresh-Path
 }
 Ok "git: $(git --version)"
@@ -59,8 +72,8 @@ Ok "git: $(git --version)"
 # --- make -------------------------------------------------------------
 
 if (-not (Have make)) {
-  Say "Installing make..."
-  choco install -y make
+  Say "Installing make (a UAC prompt may appear)..."
+  Winget-Install "GnuWin32.Make"
   Refresh-Path
 }
 Ok "make installed"
@@ -69,7 +82,7 @@ Ok "make installed"
 
 if (-not (Have arduino-cli)) {
   Say "Installing arduino-cli..."
-  choco install -y arduino-cli
+  Winget-Install "ArduinoSA.CLI"
   Refresh-Path
 }
 Ok "arduino-cli installed"
@@ -78,8 +91,14 @@ Ok "arduino-cli installed"
 
 if (-not (Have bun)) {
   Say "Installing bun..."
-  # Bun ships its own Windows installer; choco's package lags behind.
-  Invoke-RestMethod bun.sh/install.ps1 | Invoke-Expression
+  # Prefer winget; fall back to bun's own installer if the package
+  # isn't on this user's source.
+  try {
+    Winget-Install "Oven-sh.Bun"
+  } catch {
+    Warn "winget install of bun failed — falling back to bun.sh installer"
+    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://bun.sh/install.ps1'))
+  }
   Refresh-Path
 }
 Ok "bun installed"
