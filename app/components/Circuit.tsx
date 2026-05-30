@@ -33,18 +33,18 @@ const VB_W = 920
 const VB_H = 740
 
 // ---- Breadboard grid --------------------------------------------------
-const P = 17 // horizontal hole pitch
+const P = 20 // horizontal hole pitch
 const GRID_X = 96
-const COLS = 40
+const NCOLS = 30 // half breadboard — terminal columns numbered 1..30
 function col(i: number) { return GRID_X + i * P }
-const COL_XS = Array.from({ length: COLS }, (_, i) => col(i))
+const COL_XS = Array.from({ length: NCOLS }, (_, i) => col(i + 1)) // cols 1..30
 
-const BB_X = 80
+const BB_X = 96
 const BB_Y = 148
-const BB_W = 700
+const BB_W = col(NCOLS) + 18 - BB_X
 const BB_H = 420
 const RAIL_L = col(1)
-const RAIL_R = col(COLS - 2)
+const RAIL_R = col(NCOLS)
 
 // rail rows
 const RT_POS = 170
@@ -61,12 +61,13 @@ const GAP_TOP = ROW_E + 14
 const GAP_BOT = ROW_F - 14
 const GAP_MID = (ROW_E + ROW_F) / 2
 
-// ---- ESP32-C3 SuperMini (straddles the centre gap) --------------------
-const ESP_C0 = 14
-const ESP_TOP_Y = ROW_E
-const ESP_BOT_Y = ROW_F
-const ESP_BODY_Y1 = ROW_E + 8
-const ESP_BODY_Y2 = ROW_F - 8
+// ---- ESP32-C3 SuperMini (cols 1–8, straddles rows G ↔ C) --------------
+// Power side on row G (upper strip, 5V at g1), GPIO side on row C (lower strip).
+const ESP_C0 = 1
+const ESP_TOP_Y = ROWS_TOP[3] // row G (power side)
+const ESP_BOT_Y = ROWS_BOT[2] // row C (GPIO side)
+const ESP_BODY_Y1 = ESP_TOP_Y + 10
+const ESP_BODY_Y2 = ESP_BOT_Y - 10
 const ESP_BODY_X1 = col(ESP_C0) - 11
 const ESP_BODY_X2 = col(ESP_C0 + 7) + 11
 
@@ -75,32 +76,34 @@ const ESP_TOP_LBL = ['5V', 'G', '3V3', 'GP4', 'GP3', 'GP2', 'GP1', 'GP0']
 const ESP_BOT_IDS = ['gp5', 'gp6', 'gp7', 'gp8', 'gp9', 'gp10', 'gp20', 'gp21']
 const ESP_BOT_LBL = ['GP5', 'GP6', 'GP7', 'GP8', 'GP9', 'GP10', 'GP20', 'GP21']
 
-// ---- SSD1306 OLED breakout (seated above, header in row E) ------------
-const OLED_X = 124
-const OLED_Y = 196
+// ---- SSD1306 OLED breakout (row A, bottom — stands DOWNWARD) ----------
+const OLED_PIN_XS = [col(27), col(28), col(29), col(30)] // SDA SCK VDD GND (27→30)
 const OLED_W = 132
-const OLED_H = 112
-const OLED_PIN_XS = [col(4), col(5), col(6), col(7)] // GND VDD SCK SDA
+const OLED_X = (OLED_PIN_XS[0] + OLED_PIN_XS[3]) / 2 - OLED_W / 2
+const OLED_HEAD_Y = ROWS_BOT[4] // row A (bottom-most) — the header row
+const OLED_Y = OLED_HEAD_Y + 8 // body top sits just below the header
+const OLED_H = 98
 const OLED_BODY_Y2 = OLED_Y + OLED_H
 const SCREEN_X = OLED_X + 14
 const SCREEN_Y = OLED_Y + 14
 const SCREEN_W = OLED_W - 28
 const SCREEN_H = SCREEN_W / 2
 
-// ---- Piezo buzzer (seated right, level 2) -----------------------------
-const BUZ_X = col(30)
-const BUZ_Y = 268
-const BUZ_R = 34
-const BUZ_SIG_X = col(29)
-const BUZ_GND_X = col(31)
+// ---- Piezo buzzer (row F: legs at f27 & f30, disc above) --------------
+const BUZ_SIG_X = col(27)
+const BUZ_GND_X = col(30)
+const BUZ_X = (BUZ_SIG_X + BUZ_GND_X) / 2
+const BUZ_PIN_Y = ROWS_TOP[4] // row F (upper strip, near the gap)
+const BUZ_Y = 280 // disc sits above its legs
+const BUZ_R = 22
 
-// ---- GY-521 / MPU-6050 breakout (seated right, level 3) ---------------
-const MPU_X1 = col(27) - 6
-const MPU_Y = 352
-const MPU_W = col(32) - col(27) + 12
-const MPU_H = 56
-const MPU_PAD_Y = ROWS_BOT[1]
-const MPU_PAD_XS = [col(28), col(29), col(30), col(31)] // VCC GND SCL SDA
+// ---- GY-521 / MPU-6050 breakout (row I, cols 16–23, standing up) ------
+const MPU_PAD_XS = [col(16), col(17), col(18), col(19)] // VCC GND SCL SDA (XDA/XCL/AD0/INT at 20–23)
+const MPU_PAD_Y = ROWS_TOP[1] // row I
+const MPU_X1 = col(16) - 9
+const MPU_W = col(23) - col(16) + 18
+const MPU_Y = 148
+const MPU_H = 98
 
 // ---- jumper tray (loose wires) ----------------------------------------
 const TRAY_X = 786
@@ -114,21 +117,26 @@ const SNAP_HOLE = 13
 
 // ---- breadboard holes + electrical nodes ------------------------------
 const HOLES: { x: number; y: number; node: NodeId }[] = []
-for (let c = 0; c < COLS; c++) {
+for (let c = 1; c <= NCOLS; c++) {
   for (const ry of ROWS_TOP) HOLES.push({ x: col(c), y: ry, node: `T${c}` })
   for (const ry of ROWS_BOT) HOLES.push({ x: col(c), y: ry, node: `B${c}` })
 }
-for (let c = 1; c < COLS - 1; c++) {
+for (let c = 1; c <= NCOLS; c++) {
   if (c % 6 === 0) continue
   HOLES.push({ x: col(c), y: RT_POS, node: 'RPOS' })
   HOLES.push({ x: col(c), y: RB_POS, node: 'RPOS' })
   HOLES.push({ x: col(c), y: RT_NEG, node: 'RNEG' })
   HOLES.push({ x: col(c), y: RB_NEG, node: 'RNEG' })
 }
-function nearestHole(x: number, y: number) {
+const holeKey = (x: number, y: number) => `${x},${y}`
+// nearest hole of the required node that isn't blocked (under a part body or
+// already taken by a part's pin) — so you can't wire to a hole behind a board.
+function nearestFreeHole(x: number, y: number, need: NodeId, blocked: Set<string>) {
   let best: (typeof HOLES)[number] | null = null
   let bd = Infinity
   for (const h of HOLES) {
+    if (h.node !== need) continue
+    if (blocked.has(holeKey(h.x, h.y))) continue
     const d = Math.hypot(h.x - x, h.y - y)
     if (d < bd) { bd = d; best = h }
   }
@@ -144,32 +152,14 @@ function holeForNode(node: NodeId, partner: NodeId): Place {
   const pn = parseNode(node)
   if (pn.kind === 'rail') {
     const pp = parseNode(partner)
-    return { x: col(pp.col), y: node === 'RPOS' ? RT_POS : RT_NEG }
+    const bottom = pp.kind === 'B' // use the rail on the partner's half
+    const y = node === 'RPOS' ? (bottom ? RB_POS : RT_POS) : (bottom ? RB_NEG : RT_NEG)
+    return { x: col(pp.kind === 'rail' ? 20 : pp.col), y }
   }
-  return { x: col(pn.col), y: pn.kind === 'T' ? ROWS_TOP[1] : ROWS_BOT[3] }
+  return { x: col(pn.col), y: pn.kind === 'T' ? ROWS_TOP[2] : ROWS_BOT[3] }
 }
 
-const NODE_LABEL: Record<string, string> = {
-  T4: 'OLED GND', T5: 'OLED VDD', T6: 'OLED SCK', T7: 'OLED SDA',
-  T14: '5V', T15: 'G',
-  B14: 'GPIO5', B15: 'GPIO6', B16: 'GPIO7', B17: 'GPIO8', B19: 'GPIO10',
-  T29: 'buzzer S', T31: 'buzzer −',
-  B28: 'MPU VCC', B29: 'MPU GND', B30: 'MPU SCL', B31: 'MPU SDA',
-  RPOS: '+ rail', RNEG: '− rail',
-}
-const SHORT: Record<string, string> = {
-  T4: 'GND', T5: 'VDD', T6: 'SCK', T7: 'SDA', T14: '5V', T15: 'G',
-  B14: 'GP5', B15: 'GP6', B16: 'GP7', B17: 'GP8', B19: 'GP10',
-  T29: 'buzz', T31: 'buzz', B28: 'VCC', B29: 'GND', B30: 'SCL', B31: 'SDA',
-  RPOS: '+ rail', RNEG: '− rail',
-}
-
-// ESP node → header pin id (used to label the pins actually in play)
-const ESP_NODE_TO_ID: Record<string, string> = {}
-ESP_TOP_IDS.forEach((id, i) => { ESP_NODE_TO_ID[`T${ESP_C0 + i}`] = id })
-ESP_BOT_IDS.forEach((id, i) => { ESP_NODE_TO_ID[`B${ESP_C0 + i}`] = id })
-
-// seated parts (drawing only — wires reference nodes, not these pins)
+// seated parts (drawing geometry + the basis for node mapping)
 const ESP: Comp = {
   id: 'esp',
   pins: [
@@ -180,17 +170,17 @@ const ESP: Comp = {
 const OLED: Comp = {
   id: 'oled',
   pins: [
-    { id: 'gnd', cx: OLED_PIN_XS[0], cy: ROW_E, label: 'GND' },
-    { id: 'vcc', cx: OLED_PIN_XS[1], cy: ROW_E, label: 'VDD' },
-    { id: 'scl', cx: OLED_PIN_XS[2], cy: ROW_E, label: 'SCK' },
-    { id: 'sda', cx: OLED_PIN_XS[3], cy: ROW_E, label: 'SDA' },
+    { id: 'sda', cx: OLED_PIN_XS[0], cy: OLED_HEAD_Y, label: 'SDA' }, // a27
+    { id: 'scl', cx: OLED_PIN_XS[1], cy: OLED_HEAD_Y, label: 'SCK' }, // a28
+    { id: 'vcc', cx: OLED_PIN_XS[2], cy: OLED_HEAD_Y, label: 'VDD' }, // a29
+    { id: 'gnd', cx: OLED_PIN_XS[3], cy: OLED_HEAD_Y, label: 'GND' }, // a30
   ],
 }
 const BUZZER: Comp = {
   id: 'buzzer',
   pins: [
-    { id: 'sig', cx: BUZ_SIG_X, cy: ROW_E, label: 'S' },
-    { id: 'gnd', cx: BUZ_GND_X, cy: ROW_E, label: '−' },
+    { id: 'sig', cx: BUZ_SIG_X, cy: BUZ_PIN_Y, label: 'S' },
+    { id: 'gnd', cx: BUZ_GND_X, cy: BUZ_PIN_Y, label: '−' },
   ],
 }
 const MPU: Comp = {
@@ -202,6 +192,29 @@ const MPU: Comp = {
     { id: 'sda', cx: MPU_PAD_XS[3], cy: MPU_PAD_Y, label: 'SDA' },
   ],
 }
+const COMPS: Record<string, Comp> = { esp: ESP, oled: OLED, buzzer: BUZZER, mpu: MPU }
+
+function pinOf(compId: string, pinId: string): Pin {
+  return COMPS[compId].pins.find((p) => p.id === pinId)!
+}
+function colOf(cx: number) { return Math.round((cx - GRID_X) / P) }
+function nodeOfPin(p: Pin): NodeId { return `${p.cy < GAP_MID ? 'T' : 'B'}${colOf(p.cx)}` }
+function nodeOf(compId: string, pinId: string): NodeId { return nodeOfPin(pinOf(compId, pinId)) }
+
+// human + short labels for every node a wire can land on — derived from the
+// seated parts so they stay correct if a part is repositioned
+const COMP_PREFIX: Record<string, string> = { esp: '', oled: 'OLED ', buzzer: 'buzzer ', mpu: 'MPU ' }
+const NODE_LABEL: Record<string, string> = { RPOS: '+ rail', RNEG: '− rail' }
+const SHORT: Record<string, string> = { RPOS: '+ rail', RNEG: '− rail' }
+const ESP_NODE_TO_ID: Record<string, string> = {}
+for (const c of [ESP, OLED, BUZZER, MPU]) {
+  for (const p of c.pins) {
+    const node = nodeOfPin(p)
+    NODE_LABEL[node] = (COMP_PREFIX[c.id] + p.label).trim()
+    SHORT[node] = p.label
+    if (c.id === 'esp') ESP_NODE_TO_ID[node] = p.id
+  }
+}
 
 const C_GND = '#2a2d33'
 const C_VCC = '#c0392b'
@@ -211,20 +224,20 @@ const C_SIG = '#e5e7eb'
 
 const WIRES: Wire[] = [
   // Level 1 — power via the rails, then the two I²C signals
-  { id: 'w-oled-vdd', level: 1, a: 'T5', b: 'RPOS', color: C_VCC, signal: 'OLED VDD → + rail', desc: 'OLED power off the + rail' },
-  { id: 'w-esp-5v', level: 1, a: 'T14', b: 'RPOS', color: C_VCC, signal: '5V → + rail', desc: 'ESP feeds the + rail' },
-  { id: 'w-oled-gnd', level: 1, a: 'T4', b: 'RNEG', color: C_GND, signal: 'OLED GND → − rail', desc: 'OLED ground' },
-  { id: 'w-esp-g', level: 1, a: 'T15', b: 'RNEG', color: C_GND, signal: 'G → − rail', desc: 'ESP feeds the − rail' },
-  { id: 'w-oled-sck', level: 1, a: 'T6', b: 'B15', color: C_SCL, signal: 'OLED SCK → GPIO6', desc: 'I²C clock — PIN_SCL' },
-  { id: 'w-oled-sda', level: 1, a: 'T7', b: 'B14', color: C_SDA, signal: 'OLED SDA → GPIO5', desc: 'I²C data — PIN_SDA' },
+  { id: 'w-oled-vdd', level: 1, a: nodeOf('oled', 'vcc'), b: 'RPOS', color: C_VCC, signal: 'OLED VDD → + rail', desc: 'OLED power off the + rail' },
+  { id: 'w-esp-5v', level: 1, a: nodeOf('esp', '5v'), b: 'RPOS', color: C_VCC, signal: '5V → + rail', desc: 'ESP feeds the + rail' },
+  { id: 'w-oled-gnd', level: 1, a: nodeOf('oled', 'gnd'), b: 'RNEG', color: C_GND, signal: 'OLED GND → − rail', desc: 'OLED ground' },
+  { id: 'w-esp-g', level: 1, a: nodeOf('esp', 'g'), b: 'RNEG', color: C_GND, signal: 'G → − rail', desc: 'ESP feeds the − rail' },
+  { id: 'w-oled-sck', level: 1, a: nodeOf('oled', 'scl'), b: nodeOf('esp', 'gp6'), color: C_SCL, signal: 'OLED SCK → GPIO6', desc: 'I²C clock — PIN_SCL' },
+  { id: 'w-oled-sda', level: 1, a: nodeOf('oled', 'sda'), b: nodeOf('esp', 'gp5'), color: C_SDA, signal: 'OLED SDA → GPIO5', desc: 'I²C data — PIN_SDA' },
   // Level 2 — passive piezo
-  { id: 'w-buz-sig', level: 2, a: 'T29', b: 'B19', color: C_SIG, signal: 'buzzer S → GPIO10', desc: 'LEDC tone, PIN_BUZZER' },
-  { id: 'w-buz-gnd', level: 2, a: 'T31', b: 'RNEG', color: C_GND, signal: 'buzzer − → − rail', desc: 'shares the ground rail' },
+  { id: 'w-buz-sig', level: 2, a: nodeOf('buzzer', 'sig'), b: nodeOf('esp', 'gp10'), color: C_SIG, signal: 'buzzer S → GPIO10', desc: 'LEDC tone, PIN_BUZZER' },
+  { id: 'w-buz-gnd', level: 2, a: nodeOf('buzzer', 'gnd'), b: 'RNEG', color: C_GND, signal: 'buzzer − → − rail', desc: 'shares the ground rail' },
   // Level 3 — MPU-6050 IMU (software I²C bus)
-  { id: 'w-mpu-vcc', level: 3, a: 'B28', b: 'RPOS', color: C_VCC, signal: 'MPU VCC → + rail', desc: 'IMU power' },
-  { id: 'w-mpu-gnd', level: 3, a: 'B29', b: 'RNEG', color: C_GND, signal: 'MPU GND → − rail', desc: 'IMU ground' },
-  { id: 'w-mpu-scl', level: 3, a: 'B30', b: 'B17', color: C_SCL, signal: 'MPU SCL → GPIO8', desc: 'PIN_IMU_SCL' },
-  { id: 'w-mpu-sda', level: 3, a: 'B31', b: 'B16', color: C_SDA, signal: 'MPU SDA → GPIO7', desc: 'PIN_IMU_SDA' },
+  { id: 'w-mpu-vcc', level: 3, a: nodeOf('mpu', 'vcc'), b: 'RPOS', color: C_VCC, signal: 'MPU VCC → + rail', desc: 'IMU power' },
+  { id: 'w-mpu-gnd', level: 3, a: nodeOf('mpu', 'gnd'), b: 'RNEG', color: C_GND, signal: 'MPU GND → − rail', desc: 'IMU ground' },
+  { id: 'w-mpu-scl', level: 3, a: nodeOf('mpu', 'scl'), b: nodeOf('esp', 'gp8'), color: C_SCL, signal: 'MPU SCL → GPIO8', desc: 'PIN_IMU_SCL' },
+  { id: 'w-mpu-sda', level: 3, a: nodeOf('mpu', 'sda'), b: nodeOf('esp', 'gp7'), color: C_SDA, signal: 'MPU SDA → GPIO7', desc: 'PIN_IMU_SDA' },
 ]
 
 function curve(ax: number, ay: number, bx: number, by: number): string {
@@ -300,7 +313,7 @@ void loop() {
 
 export function Circuit() {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [level, setLevel] = useState<Level>(1)
+  const [level, setLevel] = useState<Level>(3)
   const [hoverWire, setHoverWire] = useState<string | null>(null)
   const [placements, setPlacements] = useState<Record<string, { a: Place | null; b: Place | null }>>(
     () => Object.fromEntries(WIRES.map((w) => [w.id, { a: null, b: null }])),
@@ -338,6 +351,26 @@ export function Circuit() {
     return m
   }, [activeWires])
 
+  // holes you can't drop a jumper into — covered by a part body, or already
+  // taken by a part's own pin (one wire per hole, like a real breadboard)
+  const blocked = useMemo(() => {
+    const s = new Set<string>()
+    const rects = [
+      { x1: ESP_BODY_X1, y1: ESP_BODY_Y1, x2: ESP_BODY_X2, y2: ESP_BODY_Y2 },
+      { x1: OLED_X, y1: OLED_Y, x2: OLED_X + OLED_W, y2: OLED_BODY_Y2 },
+    ]
+    if (level >= 2) rects.push({ x1: BUZ_X - BUZ_R, y1: BUZ_Y - BUZ_R, x2: BUZ_X + BUZ_R, y2: BUZ_Y + BUZ_R })
+    if (level >= 3) rects.push({ x1: MPU_X1, y1: MPU_Y, x2: MPU_X1 + MPU_W, y2: MPU_Y + MPU_H })
+    for (const h of HOLES) {
+      for (const r of rects) {
+        if (h.x >= r.x1 && h.x <= r.x2 && h.y >= r.y1 && h.y <= r.y2) { s.add(holeKey(h.x, h.y)); break }
+      }
+    }
+    const pinParts = [ESP, OLED, ...(level >= 2 ? [BUZZER] : []), ...(level >= 3 ? [MPU] : [])]
+    for (const c of pinParts) for (const p of c.pins) s.add(holeKey(p.cx, p.cy))
+    return s
+  }, [level])
+
   useEffect(() => {
     if (oledLit) ensureLoop()
   }, [oledLit])
@@ -371,8 +404,8 @@ export function Circuit() {
         const w = WIRES.find((x) => x.id === d.wireId)
         if (w) {
           const need = d.end === 'a' ? w.a : w.b
-          const h = nearestHole(d.x, d.y)
-          if (h && h.node === need) {
+          const h = nearestFreeHole(d.x, d.y, need, blocked)
+          if (h) {
             unlockAudio()
             setPlacements((p) => ({ ...p, [d.wireId]: { ...p[d.wireId], [d.end]: { x: h.x, y: h.y } } }))
           }
@@ -388,7 +421,7 @@ export function Circuit() {
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
     }
-  }, [drag])
+  }, [drag, blocked])
 
   // grabbing an end unplugs it (if it was placed) and starts dragging
   const startDrag = (wireId: string, end: 'a' | 'b') => (e: React.PointerEvent) => {
@@ -540,13 +573,37 @@ export function Circuit() {
                 fill="#c8b988" opacity={0.5} />
               <line x1={BB_X + 10} y1={GAP_MID} x2={BB_X + BB_W - 10} y2={GAP_MID}
                 stroke="#9c8a52" strokeWidth={1} opacity={0.5} />
-              {COL_XS.map((cx, i) => (i % 5 === 0 && i > 0
-                ? <text key={`cn-${i}`} x={cx} y={GAP_MID + 3} textAnchor="middle"
-                    fontFamily="ui-monospace, monospace" fontSize={7} fill="#8a7a3e" opacity={0.7}>{i}</text>
-                : null))}
+              {[GAP_MID + 3, ROWS_BOT[ROWS_BOT.length - 1] + 22].map((ny, row) =>
+                COL_XS.map((cx, i) => (
+                  <text key={`cn-${row}-${i}`} x={cx} y={ny} textAnchor="middle"
+                    fontFamily="ui-monospace, monospace" fontSize={8}
+                    fill="#6f5f2c" opacity={(i + 1) % 5 === 0 ? 1 : 0.65}>{i + 1}</text>
+                )),
+              )}
+
+              {/* row letters down both edges — A–E (top strip), F–J (bottom) */}
+              {[...ROWS_TOP.map((ry, i) => [ry, 'JIHGF'[i]] as const),
+                ...ROWS_BOT.map((ry, i) => [ry, 'EDCBA'[i]] as const)].map(([ry, ltr]) =>
+                [BB_X + 7, col(NCOLS) + 13].map((lx, k) => (
+                  <text key={`rl-${ltr}-${k}`} x={lx} y={ry + 3} textAnchor="middle"
+                    fontFamily="ui-monospace, monospace" fontSize={8}
+                    fill="#8a7a3e" opacity={0.75}>{ltr}</text>
+                )),
+              )}
+
+              {/* + / − markers at both ends of every power rail */}
+              {([[RT_POS, '+', '#c0392b'], [RT_NEG, '−', '#2c5e9e'],
+                 [RB_NEG, '−', '#2c5e9e'], [RB_POS, '+', '#c0392b']] as const).map(([ry, sym, c]) =>
+                [BB_X + 7, col(NCOLS) + 13].map((lx, k) => (
+                  <text key={`rm-${ry}-${k}`} x={lx} y={ry + 3.5} textAnchor="middle"
+                    fontFamily="ui-monospace, monospace" fontSize={10} fontWeight={700}
+                    fill={c} opacity={0.85}>{sym}</text>
+                )),
+              )}
+
               <text x={BB_X + BB_W - 16} y={BB_Y + BB_H - 8} textAnchor="end"
                 fontFamily="'Pixelify Sans', monospace" fontSize={9}
-                fill="#7a6a3a" opacity={0.7}>breadboard · 400 tie-points</text>
+                fill="#7a6a3a" opacity={0.7}>half breadboard · cols 1–30</text>
             </g>
 
             {/* ---- ESP32-C3 SuperMini (seated, straddling the gap) ---- */}
@@ -562,12 +619,11 @@ export function Circuit() {
                     <rect x={p.cx - 2} y={tabY1} width={4} height={tabY2 - tabY1}
                       fill="url(#cb-pin-metal)" opacity={used ? 1 : 0.55} />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" opacity={used ? 1 : 0.6} />
-                    {used && (
-                      <text x={p.cx} y={isTop ? p.cy - 9 : p.cy + 16} textAnchor="middle"
-                        fontFamily="'Pixelify Sans', monospace" fontSize={9} fill={SILK} opacity={0.9}>
-                        {p.label}
-                      </text>
-                    )}
+                    <text x={p.cx} y={isTop ? p.cy - 9 : p.cy + 16} textAnchor="middle"
+                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fill="#43370f" opacity={used ? 1 : 0.55}>
+                      {p.label}
+                    </text>
                   </g>
                 )
               })}
@@ -577,18 +633,18 @@ export function Circuit() {
               <rect x={ESP_BODY_X1} y={ESP_BODY_Y1} width={ESP_BODY_X2 - ESP_BODY_X1}
                 height={ESP_BODY_Y2 - ESP_BODY_Y1} rx={7}
                 fill="url(#cb-fine)" pointerEvents="none" />
-              <g transform={`translate(${(ESP_BODY_X1 + ESP_BODY_X2) / 2 - 26} ${GAP_MID - 12})`}>
+              <g transform={`translate(${(ESP_BODY_X1 + ESP_BODY_X2) / 2 - 26} ${(ESP_BODY_Y1 + ESP_BODY_Y2) / 2 - 12})`}>
                 <rect width={52} height={24} rx={2} fill="#15171c" stroke="#22252b" strokeWidth={0.7} />
-                <text x={26} y={15} textAnchor="middle"
+                <text x={26} y={16} textAnchor="middle"
                   fontFamily="'Pixelify Sans', monospace" fontSize={8}
                   fill="#a8aab2" letterSpacing={0.5}>ESP32-C3</text>
               </g>
-              {/* USB-C cable — already plugged in, powers the board */}
+              {/* USB-C — on the left short edge, plugged in facing OUTSIDE the board */}
               <g pointerEvents="none">
                 {(() => {
-                  const px = ESP_BODY_X2 + 16
-                  const py = GAP_MID
-                  const d = `M ${px} ${py} C ${px + 90} ${py}, 720 540, 690 ${VB_H - 18}`
+                  const py = (ESP_BODY_Y1 + ESP_BODY_Y2) / 2
+                  const px = ESP_BODY_X1 - 18
+                  const d = `M ${px} ${py} C ${px - 40} ${py}, 60 540, 46 ${VB_H - 18}`
                   return (
                     <>
                       <path d={d} fill="none" stroke="#15161a" strokeWidth={9} strokeLinecap="round" />
@@ -596,16 +652,16 @@ export function Circuit() {
                     </>
                   )
                 })()}
-                <rect x={ESP_BODY_X2 - 2} y={GAP_MID - 9} width={20} height={18} rx={3}
+                <rect x={ESP_BODY_X1 - 18} y={(ESP_BODY_Y1 + ESP_BODY_Y2) / 2 - 9} width={20} height={18} rx={3}
                   fill="#2a2d35" stroke="#3a3d45" />
-                <rect x={ESP_BODY_X2 + 14} y={GAP_MID - 6} width={8} height={12} rx={2} fill="#15161a" />
-                <text x={ESP_BODY_X2 + 30} y={GAP_MID - 14} textAnchor="start"
+                <rect x={ESP_BODY_X1 - 16} y={(ESP_BODY_Y1 + ESP_BODY_Y2) / 2 - 6} width={8} height={12} rx={2} fill="#15161a" />
+                <text x={ESP_BODY_X1 - 22} y={(ESP_BODY_Y1 + ESP_BODY_Y2) / 2 - 12} textAnchor="end"
                   fontFamily="'Pixelify Sans', monospace" fontSize={8}
-                  fill={SILK} opacity={0.6}>USB-C · power</text>
+                  fill={SILK} opacity={0.6}>USB-C</text>
               </g>
-              <circle cx={ESP_BODY_X1 + 12} cy={GAP_MID} r={3.4} fill="#08211a" stroke="#041511" />
+              <circle cx={ESP_BODY_X2 - 12} cy={ESP_BODY_Y1 + 12} r={3.4} fill="#08211a" stroke="#041511" />
               {powered && (
-                <circle cx={ESP_BODY_X1 + 12} cy={GAP_MID} r={2.2} fill="#22c55e"
+                <circle cx={ESP_BODY_X2 - 12} cy={ESP_BODY_Y1 + 12} r={2.2} fill="#22c55e"
                   filter="url(#cb-glow)" opacity={0.95} />
               )}
             </g>
@@ -614,10 +670,10 @@ export function Circuit() {
             <g>
               {OLED.pins.map((p) => (
                 <g key={`opin-tab-${p.id}`}>
-                  <circle cx={p.cx} cy={ROW_E} r={2.4} fill="#0a0b0d" opacity={0.6} />
-                  <rect x={p.cx - 2} y={OLED_BODY_Y2} width={4} height={ROW_E - OLED_BODY_Y2}
+                  <circle cx={p.cx} cy={p.cy} r={2.4} fill="#0a0b0d" opacity={0.6} />
+                  <rect x={p.cx - 2} y={p.cy} width={4} height={OLED_Y - p.cy}
                     fill="url(#cb-pin-metal)" />
-                  <circle cx={p.cx} cy={ROW_E} r={3} fill="url(#cb-pad)" />
+                  <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
                 </g>
               ))}
               <rect x={OLED_X} y={OLED_Y} width={OLED_W} height={OLED_H} rx={7}
@@ -641,9 +697,9 @@ export function Circuit() {
                   fill={SILK} opacity={0.25}>awaiting power</text>
               )}
               {OLED.pins.map((p) => (
-                <text key={`olbl-${p.id}`} x={p.cx} y={OLED_BODY_Y2 - 4} textAnchor="middle"
+                <text key={`olbl-${p.id}`} x={p.cx} y={OLED_HEAD_Y - 6} textAnchor="middle"
                   fontFamily="'Pixelify Sans', monospace" fontSize={8}
-                  fill={SILK} opacity={0.85}>{p.label}</text>
+                  fill="#43370f" opacity={0.85}>{p.label}</text>
               ))}
             </g>
 
@@ -667,10 +723,10 @@ export function Circuit() {
                 {BUZZER.pins.map((p) => (
                   <g key={`bpin-${p.id}`}>
                     <line x1={BUZ_X + (p.cx - BUZ_X) * 0.5} y1={BUZ_Y + BUZ_R - 8}
-                      x2={p.cx} y2={ROW_E} stroke="#caa05a" strokeWidth={1.5} />
-                    <circle cx={p.cx} cy={ROW_E} r={2.4} fill="#0a0b0d" opacity={0.6} />
-                    <circle cx={p.cx} cy={ROW_E} r={3} fill="url(#cb-pad)" />
-                    <text x={p.cx} y={ROW_E + 14} textAnchor="middle"
+                      x2={p.cx} y2={p.cy} stroke="#caa05a" strokeWidth={1.5} />
+                    <circle cx={p.cx} cy={p.cy} r={2.4} fill="#0a0b0d" opacity={0.6} />
+                    <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
+                    <text x={p.cx} y={p.cy + 14} textAnchor="middle"
                       fontFamily="'Pixelify Sans', monospace" fontSize={8} fill={SILK} opacity={0.7}>{p.label}</text>
                   </g>
                 ))}
@@ -680,6 +736,18 @@ export function Circuit() {
             {/* ---- MPU-6050 IMU (seated right, level 3) ---- */}
             {level >= 3 && (
               <g>
+                {/* unconnected pins (XDA XCL AD0 INT) at cols 20–23 */}
+                {[['XDA', 20], ['XCL', 21], ['AD0', 22], ['INT', 23]].map(([lbl, c]) => (
+                  <g key={`mx-${c}`}>
+                    <circle cx={col(c as number)} cy={MPU_PAD_Y} r={2.4} fill="#0a0b0d" opacity={0.5} />
+                    <rect x={col(c as number) - 2} y={MPU_Y + MPU_H} width={4} height={MPU_PAD_Y - (MPU_Y + MPU_H)}
+                      fill="url(#cb-pin-metal)" opacity={0.55} />
+                    <circle cx={col(c as number)} cy={MPU_PAD_Y} r={3} fill="url(#cb-pad)" opacity={0.6} />
+                    <text x={col(c as number)} y={MPU_PAD_Y + 14} textAnchor="middle"
+                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fill="#43370f" opacity={0.5}>{lbl}</text>
+                  </g>
+                ))}
                 {MPU.pins.map((p) => (
                   <g key={`mpin-${p.id}`}>
                     <circle cx={p.cx} cy={p.cy} r={2.4} fill="#0a0b0d" opacity={0.6} />
@@ -687,7 +755,8 @@ export function Circuit() {
                       fill="url(#cb-pin-metal)" />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
                     <text x={p.cx} y={p.cy + 14} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fill={SILK} opacity={0.75}>{p.label}</text>
+                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fontWeight={700}
+                      fill="#43370f" opacity={1}>{p.label}</text>
                   </g>
                 ))}
                 <rect x={MPU_X1} y={MPU_Y} width={MPU_W} height={MPU_H} rx={6}
@@ -795,7 +864,7 @@ export function Circuit() {
                 {(['lift', 'shake'] as const).map((kind, i) => {
                   const gw = 92
                   const gx = MPU_X1 + MPU_W / 2 - gw / 2
-                  const gy = MPU_PAD_Y + 26 + i * 32
+                  const gy = 610 + i * 34
                   const pressed = gesture === kind
                   return (
                     <g key={`ges-${kind}`}

@@ -1,10 +1,32 @@
 import type { Metadata } from 'next'
 import './globals.css'
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+  ? process.env.NEXT_PUBLIC_SITE_URL
+  : process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : 'http://localhost:3000'
+
+const title = 'tamagotchi — build your own desk pet'
+const description =
+  'Build your own tiny desk pet: wire up an ESP32-C3 and an OLED, flash the firmware, and end up with a pet whose eyes follow you around the room.'
+
 export const metadata: Metadata = {
-  title: 'tamagotchi — build your own desk pet',
-  description:
-    'Build your own tiny desk pet: wire up an ESP32-C3 and an OLED, flash the firmware, and end up with a pet whose eyes follow you around the room.',
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  // opengraph-image.tsx / twitter-image.tsx supply the card images automatically.
+  openGraph: {
+    type: 'website',
+    siteName: 'tamagotchi',
+    title,
+    description,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+  },
 }
 
 export default function RootLayout({
