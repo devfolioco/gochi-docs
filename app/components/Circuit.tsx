@@ -293,20 +293,27 @@ void loop() {
   3: {
     title: 'Level 3 · Motion',
     subtitle: 'Add the MPU-6050 on a second I²C bus so the pet feels how you handle it.',
-    code: `#include "imu/imu.h"
-#include "config.h"
+    code: `#include "imu/mpu6050.h"
+#include "imu/motion.h"
 
 void setup() {
-  // The MPU runs on a separate SOFTWARE I²C bus (GPIO7/8) so it never
-  // fights the OLED for the hardware bus or drops the pull-ups too low.
-  imu::begin(PIN_IMU_SDA, PIN_IMU_SCL);   // GPIO7 / GPIO8
+  // The MPU runs on its own bit-banged I²C bus — PIN_MPU_SDA / PIN_MPU_SCL
+  // (GPIO7 / GPIO8 in config.h) — so it never fights the OLED for the
+  // hardware bus. begin() reads those pins itself; no args.
+  if (imu::begin()) motion::begin();
 }
 
 void loop() {
-  imu::update();                          // read accel, run gesture filter
-
-  if (imu::lifted()) face.set(SURPRISED); // sudden +Z acceleration
-  if (imu::shaken()) face.set(ANGRY);     // jerk past the threshold
+  imu::Sample s;
+  if (imu::isReady() && imu::read(s)) {     // one fresh accel + gyro sample
+    switch (motion::update(s, millis())) {
+      case motion::Event::Pickup:           // lifted off the desk
+        face.set(SURPRISED); break;
+      case motion::Event::Shake:            // shaken hard
+        face.set(ANGRY); break;
+      default: break;
+    }
+  }
 }`,
   },
 }
