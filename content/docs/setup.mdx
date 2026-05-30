@@ -42,7 +42,7 @@ In a regular PowerShell window (no admin needed — a UAC prompt may pop
 up when `make` installs):
 
 ```ps
-powershell -c "iex (iwr https://gochi.in/install.ps1).Content"
+iex ([System.Text.Encoding]::UTF8.GetString((iwr -UseBasicParsing https://gochi.in/install.ps1).Content))
 ```
 
 Needs Windows 10 1809+ or Windows 11 (for built-in `winget`). If
