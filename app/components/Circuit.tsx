@@ -47,8 +47,10 @@ const RAIL_L = col(1)
 const RAIL_R = col(NCOLS)
 
 // rail rows
-const RT_POS = 170
-const RT_NEG = 190
+// top rail group: − (blue) on top, + (red) below — matches the bottom group
+const RT_NEG = 170
+const RT_POS = 190
+// bottom rail group: − (blue) on top, + (red) below — matches the top group
 const RB_NEG = 520
 const RB_POS = 540
 
@@ -562,8 +564,9 @@ export function Circuit() {
               {[[RT_POS, '#c0392b'], [RT_NEG, '#2c5e9e'], [RB_NEG, '#2c5e9e'], [RB_POS, '#c0392b']].map(
                 ([ry, c], i) => (
                   <g key={`rail-${i}`}>
+                    {/* coloured rail wire — red = + (positive), blue = − (negative) */}
                     <line x1={RAIL_L} y1={ry as number} x2={RAIL_R} y2={ry as number}
-                      stroke={c as string} strokeWidth={1.4} opacity={0.5} />
+                      stroke={c as string} strokeWidth={3} opacity={0.95} strokeLinecap="round" />
                     {COL_XS.filter((_, k) => k % 6 !== 0).map((cx) => (
                       <circle key={`rh-${i}-${cx}`} cx={cx} cy={ry as number} r={1.5}
                         fill="#1a1a1f" opacity={0.4} />
