@@ -2,9 +2,14 @@
 # Usage:  Open PowerShell as Administrator, then:
 #         powershell -c "irm gochi.in/install.ps1 | iex"
 #
-# Bootstraps Chocolatey if missing, then installs git, make, arduino-cli,
-# and bun. Clones the gochi repo and installs the ESP32 core. Idempotent
-# — safe to re-run.
+# Bootstraps Chocolatey if missing, then installs git, make,
+# arduino-cli, and bun. Idempotent — safe to re-run.
+#
+# After this, clone the gochi repo and install the ESP32 core yourself:
+#   git clone https://github.com/devfolioco/gochi.git
+#   cd gochi
+#   arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+#   arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
 
 $ErrorActionPreference = "Stop"
 
@@ -79,34 +84,14 @@ if (-not (Have bun)) {
 }
 Ok "bun installed"
 
-# --- clone repo -------------------------------------------------------
-
-if (Test-Path "firmware/arduino-cli.yaml") {
-  $repoRoot = (Get-Location).Path
-  Ok "Already inside the gochi repo: $repoRoot"
-} else {
-  if (-not (Test-Path "gochi")) {
-    Say "Cloning gochi into .\gochi..."
-    git clone https://github.com/devfolioco/gochi.git gochi
-  } else {
-    Warn ".\gochi already exists - using it as-is"
-  }
-  Set-Location gochi
-  $repoRoot = (Get-Location).Path
-}
-
-# --- ESP32 core -------------------------------------------------------
-
-Say "Installing the ESP32 core (~300 MB)..."
-arduino-cli --config-file firmware/arduino-cli.yaml core update-index
-arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
-Ok "ESP32 core installed"
-
 # --- done -------------------------------------------------------------
 
 Write-Host ""
-Say "Done. Next steps:"
+Say "Toolchain installed. Next steps:"
 Write-Host "  1. Open a fresh PowerShell so PATH picks up new tools"
-Write-Host "  2. cd $repoRoot"
-Write-Host "  3. Plug the ESP32-C3 into USB (red power LED lights up)"
-Write-Host "  4. make test-led    # blue LED should blink - flashing works"
+Write-Host "  2. git clone https://github.com/devfolioco/gochi.git"
+Write-Host "  3. cd gochi"
+Write-Host "  4. arduino-cli --config-file firmware/arduino-cli.yaml core update-index"
+Write-Host "  5. arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32"
+Write-Host "  6. Plug the ESP32-C3 into USB (red power LED lights up)"
+Write-Host "  7. make test-led    # blue LED should blink - flashing works"

@@ -2,9 +2,14 @@
 # gochi installer — macOS and Linux.
 # Usage:  curl -fsSL https://gochi.in/install.sh | bash
 #
-# Installs make, arduino-cli, bun, clones the gochi repo into ./gochi
-# (if not already in one), and pulls down the ESP32 core. Idempotent —
-# safe to re-run.
+# Installs the toolchain only: make, git, curl, arduino-cli, bun
+# (and Homebrew on macOS if it's missing). Idempotent — safe to re-run.
+#
+# After this, clone the gochi repo and install the ESP32 core yourself:
+#   git clone https://github.com/devfolioco/gochi.git
+#   cd gochi
+#   arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+#   arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
 
 set -euo pipefail
 
@@ -109,33 +114,13 @@ else
   warn "Add \$HOME/.bun/bin to your shell's PATH (the installer printed the line to add)."
 fi
 
-# --- clone repo -------------------------------------------------------
-
-if [ -f firmware/arduino-cli.yaml ]; then
-  REPO_ROOT="$(pwd)"
-  ok "Already inside the gochi repo: $REPO_ROOT"
-else
-  if [ -d gochi ]; then
-    warn "./gochi already exists — using it as-is"
-  else
-    say "Cloning gochi into ./gochi…"
-    git clone https://github.com/devfolioco/gochi.git gochi
-  fi
-  cd gochi
-  REPO_ROOT="$(pwd)"
-fi
-
-# --- ESP32 core -------------------------------------------------------
-
-say "Installing the ESP32 core (~300 MB — grab a coffee)…"
-arduino-cli --config-file firmware/arduino-cli.yaml core update-index
-arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
-ok "ESP32 core installed"
-
 # --- done -------------------------------------------------------------
 
 printf "\n"
-say "Done. Next steps:"
-printf "  1. cd %s\n" "$REPO_ROOT"
-printf "  2. Plug the ESP32-C3 into USB (red power LED lights up)\n"
-printf "  3. make test-led    # blue LED should blink — flashing works\n"
+say "Toolchain installed. Next steps:"
+printf "  1. git clone https://github.com/devfolioco/gochi.git\n"
+printf "  2. cd gochi\n"
+printf "  3. arduino-cli --config-file firmware/arduino-cli.yaml core update-index\n"
+printf "  4. arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32\n"
+printf "  5. Plug the ESP32-C3 into USB (red power LED lights up)\n"
+printf "  6. make test-led    # blue LED should blink — flashing works\n"

@@ -1,16 +1,14 @@
 ---
 title: Setup
-description: One command installs the whole toolchain and verifies flashing.
+description: One command for the toolchain, then clone, install the core, verify.
 ---
 
 import { Callout } from "fumadocs-ui/components/callout";
 import { Steps, Step } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
-Pick your OS and run one command. The installer pulls `make`,
-`arduino-cli`, `bun`, clones the gochi repo into `./gochi`, and installs
-the ESP32 core. After that you flash a tiny LED-blink sketch to confirm
-the toolchain works.
+Four steps: run the installer, clone the repo, pull down the ESP32
+core, then flash a tiny LED-blink test to confirm the toolchain works.
 
 <Callout type="info">
   This page gets your toolchain ready. The
@@ -18,7 +16,15 @@ the toolchain works.
   the real firmware.
 </Callout>
 
-## 1. Run the installer
+<Steps>
+
+<Step>
+
+## Install the toolchain
+
+The installer pulls everything you need: `make`, `git`, `arduino-cli`,
+and `bun` (plus Homebrew on macOS or Chocolatey on Windows if they're
+missing). It's idempotent — anything you already have is left alone.
 
 <Tabs items={['macOS / Linux', 'Windows']}>
 
@@ -42,26 +48,61 @@ powershell -c "irm gochi.in/install.ps1 | iex"
 
 </Tabs>
 
-The script is idempotent — anything you already have installed is left
-alone. When it finishes you'll be inside `./gochi` with the full
-toolchain in place.
-
 <Callout type="info">
   Want to read the script first? It's the right thing to do.
   [`install.sh`](/install.sh) · [`install.ps1`](/install.ps1).
 </Callout>
 
-## 2. Plug in the ESP32-C3
+</Step>
 
-A small **red power LED** should light up. Leave the board plugged in.
+<Step>
 
-Use a **USB-C data cable**, not a power-only one. If the board doesn't
-enumerate (`make ports` shows nothing), the cable is the first thing to
-swap.
+## Clone the repo
 
-## 3. Verify flashing works
+**Recommended:** fork first. Head to
+[github.com/devfolioco/gochi](https://github.com/devfolioco/gochi),
+click **Fork**, and clone your fork (replace `YOUR-USERNAME`):
 
-From inside the `gochi` repo:
+```sh
+git clone https://github.com/YOUR-USERNAME/gochi.git
+cd gochi
+```
+
+Forking means you can push your tweaks (custom faces, new sounds, IMU
+gestures) without needing write access to the main repo, and PRs are
+one click away.
+
+Just want to try it? Clone upstream directly:
+
+```sh
+git clone https://github.com/devfolioco/gochi.git
+cd gochi
+```
+
+Every command from here on runs from the repo root.
+
+</Step>
+
+<Step>
+
+## Install the ESP32 core
+
+A ~300 MB download — grab a coffee. The repo ships its own
+`arduino-cli.yaml`, so this command is the same on every machine:
+
+```sh
+arduino-cli --config-file firmware/arduino-cli.yaml core update-index
+arduino-cli --config-file firmware/arduino-cli.yaml core install esp32:esp32
+```
+
+</Step>
+
+<Step>
+
+## Plug the ESP32-C3 in, verify flashing works
+
+A small **red power LED** lights up. Use a **USB-C data cable**, not a
+power-only one.
 
 ```sh
 make test-led
@@ -71,6 +112,10 @@ The port is auto-detected. If the upload hangs at *"Connecting…"*, hold
 **BOOT**, tap **RESET**, release **BOOT**, and run it again. Once it
 completes, the **blue LED** on the ESP32-C3 starts blinking — flashing
 works.
+
+</Step>
+
+</Steps>
 
 ## Next
 
