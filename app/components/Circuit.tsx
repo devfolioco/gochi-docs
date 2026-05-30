@@ -89,9 +89,9 @@ const SCREEN_Y = OLED_Y + 14
 const SCREEN_W = OLED_W - 28
 const SCREEN_H = SCREEN_W / 2
 
-// ---- Piezo buzzer (row F: legs at f27 & f30, disc above) --------------
-const BUZ_SIG_X = col(27)
-const BUZ_GND_X = col(30)
+// ---- Piezo buzzer (row F: + at f30, − at f27, disc above) -------------
+const BUZ_SIG_X = col(30)
+const BUZ_GND_X = col(27)
 const BUZ_X = (BUZ_SIG_X + BUZ_GND_X) / 2
 const BUZ_PIN_Y = ROWS_TOP[4] // row F (upper strip, near the gap)
 const BUZ_Y = 280 // disc sits above its legs
@@ -179,7 +179,7 @@ const OLED: Comp = {
 const BUZZER: Comp = {
   id: 'buzzer',
   pins: [
-    { id: 'sig', cx: BUZ_SIG_X, cy: BUZ_PIN_Y, label: 'S' },
+    { id: 'sig', cx: BUZ_SIG_X, cy: BUZ_PIN_Y, label: '+' },
     { id: 'gnd', cx: BUZ_GND_X, cy: BUZ_PIN_Y, label: '−' },
   ],
 }
@@ -727,7 +727,8 @@ export function Circuit() {
                     <circle cx={p.cx} cy={p.cy} r={2.4} fill="#0a0b0d" opacity={0.6} />
                     <circle cx={p.cx} cy={p.cy} r={3} fill="url(#cb-pad)" />
                     <text x={p.cx} y={p.cy + 14} textAnchor="middle"
-                      fontFamily="'Pixelify Sans', monospace" fontSize={8} fill={SILK} opacity={0.7}>{p.label}</text>
+                      fontFamily="'Pixelify Sans', monospace" fontSize={9} fontWeight={700}
+                      fill="#43370f" opacity={0.85}>{p.label}</text>
                   </g>
                 ))}
               </g>
