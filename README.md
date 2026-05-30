@@ -83,7 +83,7 @@ The OLED canvas hydrates in place above it.
 The pixel face is a faithful port of `firmware/src/views/procedural_face.cpp`
 — same 128×64 buffer, same primitives, same blink + gaze state machine, same
 12 expressions (neutral, happy, sad, sleepy, excited, surprised, angry,
-blink, love, horny, shy, dead). CSS scales the canvas up with
+blink, love, flirty, shy, dead). CSS scales the canvas up with
 `image-rendering: pixelated` so each OLED pixel reads as a deliberate block.
 
 ### Docs site (`/docs`)

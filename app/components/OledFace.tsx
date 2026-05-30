@@ -37,7 +37,7 @@ export const EXPRESSIONS = [
   'angry',
   'blink',
   'love',
-  'horny',
+  'flirty',
   'shy',
   'dead',
 ] as const
@@ -55,7 +55,7 @@ function gazeAmpFor(e: Expression) {
     case 'sad': return 6
     case 'sleepy': return 4
     case 'blink': return 3
-    case 'horny': return 5
+    case 'flirty': return 5
     case 'shy': return 7
     default: return 0
   }
@@ -562,7 +562,7 @@ function drawFace(r: R, now: number) {
       drawBlush(r, erx + 7, ey + 13)
       break
     }
-    case 'horny': {
+    case 'flirty': {
       const bob = wave(t, 1100, 1) | 0
       const wig = wave(t, 320, 2) | 0
       const lid = wave(t, 2600, 2) | 0

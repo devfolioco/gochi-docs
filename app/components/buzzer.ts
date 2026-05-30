@@ -51,7 +51,7 @@ const JINGLES: Record<Expression, Tone[]> = {
     { freq: 880, ms: 150 },
     { freq: 1047, ms: 220 },
   ],
-  horny: [
+  flirty: [
     { freq: 659, ms: 90 },
     { freq: 988, ms: 90 },
     { freq: 1245, ms: 130 },
